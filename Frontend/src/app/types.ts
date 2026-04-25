@@ -1,15 +1,93 @@
 export interface Product {
   id: string;
+  _id?: string;
+  productId?: string;
+  slug?: string;
   name: string;
   category: string;
+  categoryId?: string;
+  categorySlug?: string;
   price: number;
   originalPrice?: number;
   discount?: number;
   image: string;
+  images?: string[];
+  description?: string;
+  brand?: string;
+  material?: string;
+  gender?: "men" | "women" | "unisex" | "kids";
+  sizes?: string[];
+  colors?: string[];
+  stock?: number;
+  sold?: number;
+  averageRating?: number;
+  reviewCount?: number;
+  isFeatured?: boolean;
 }
 
 export interface CartItem extends Product {
+  cartItemId?: string;
+  productId: string;
   quantity: number;
+  size?: string;
+  color?: string;
+}
+
+export interface Category {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  parent?: Pick<Category, "_id" | "name" | "slug"> | null;
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface CartSummary {
+  items: CartItem[];
+  subtotal: number;
+  totalQuantity: number;
+}
+
+export interface Review {
+  _id: string;
+  product: string;
+  rating: number;
+  comment: string;
+  user?: Pick<UserProfile, "_id" | "username" | "avatar">;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface OrderItem {
+  product: string | Product;
+  name: string;
+  image: string;
+  size?: string;
+  color?: string;
+  price: number;
+  quantity: number;
+  subtotal: number;
+}
+
+export interface Order {
+  _id: string;
+  items: OrderItem[];
+  customerName: string;
+  phone: string;
+  address: string;
+  note?: string;
+  status: "pending" | "confirmed" | "packing" | "shipping" | "completed" | "cancelled" | "refunded";
+  totalAmount: number;
+  paymentStatus: "unpaid" | "pending" | "paid" | "failed" | "refunded";
+  payment?: unknown;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Avatar {
@@ -21,7 +99,7 @@ export interface Avatar {
   uploadedAt?: string;
 }
 
-export type UserRole = "user" | "admin";
+export type UserRole = "user" | "admin" | "manager" | "staff";
 
 export interface UserProfile {
   _id: string;

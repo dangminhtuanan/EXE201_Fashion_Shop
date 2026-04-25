@@ -6,11 +6,18 @@ import {
 } from "./auth-storage";
 import type {
   AuthSession,
+  CartItem,
+  CartSummary,
+  Category,
   ChangePasswordPayload,
   CreateUserPayload,
   LoginPayload,
+  Order,
   OtpPayload,
+  Pagination,
+  Product,
   RegisterPayload,
+  Review,
   ResetPasswordPayload,
   UpdateProfilePayload,
   UpdateUserPayload,
@@ -76,10 +83,13 @@ export function getErrorMessage(error: unknown) {
   return "Đã xảy ra lỗi không xác định";
 }
 
-type RequestBody = FormData | Record<string, unknown> | string | null;
+type RequestBody = FormData | object | string | null;
 
 interface RequestOptions
-  extends Omit<AxiosRequestConfig, "url" | "baseURL" | "data" | "headers" | "method"> {
+  extends Omit<
+    AxiosRequestConfig,
+    "url" | "baseURL" | "data" | "headers" | "method" | "auth"
+  > {
   auth?: boolean;
   body?: RequestBody;
   headers?: Record<string, string>;
@@ -182,7 +192,7 @@ async function request<T>(
       const status = error.response?.status ?? 0;
       const data = error.response?.data;
 
-      if (status === 401 && auth && retryOnUnauthorized) {
+      if ((status === 401 || status === 403) && auth && retryOnUnauthorized) {
         const newAccessToken = await refreshAccessToken();
 
         if (newAccessToken) {
@@ -236,6 +246,227 @@ interface RefreshTokenResponse extends MessageResponse {
 
 interface AvatarResponse extends MessageResponse {
   avatar: UserProfile["avatar"];
+}
+
+type ApiCategory = Category;
+
+interface ApiProduct {
+  _id: string;
+  slug?: string;
+  name: string;
+  category?: ApiCategory | string | null;
+  description?: string;
+  price: number;
+  originalPrice?: number;
+  images?: string[];
+  brand?: string;
+  material?: string;
+  gender?: Product["gender"];
+  sizes?: string[];
+  colors?: string[];
+  stock?: number;
+  sold?: number;
+  averageRating?: number;
+  reviewCount?: number;
+  isFeatured?: boolean;
+}
+
+interface ApiCartItem {
+  _id: string;
+  product: ApiProduct | null;
+  size?: string;
+  color?: string;
+  quantity: number;
+}
+
+interface ApiCartSummary {
+  items: ApiCartItem[];
+  subtotal: number;
+  totalQuantity: number;
+}
+
+interface ProductsResponse extends MessageResponse {
+  products: ApiProduct[];
+  pagination: Pagination;
+}
+
+interface ProductResponse extends MessageResponse {
+  product: ApiProduct;
+}
+
+interface CategoriesResponse extends MessageResponse {
+  categories: Category[];
+}
+
+interface CategoryResponse extends MessageResponse {
+  category: Category;
+}
+
+interface CartResponse extends MessageResponse {
+  cart: ApiCartSummary;
+}
+
+interface OrdersResponse extends MessageResponse {
+  orders: Order[];
+}
+
+interface OrderResponse extends MessageResponse {
+  order: Order;
+}
+
+interface ReviewsResponse extends MessageResponse {
+  reviews: Review[];
+}
+
+interface ReviewResponse extends MessageResponse {
+  review: Review;
+}
+
+interface RecommendationResponse extends MessageResponse {
+  products: ApiProduct[];
+}
+
+interface ChatResponse extends MessageResponse {
+  answer: string;
+  products: ApiProduct[];
+}
+
+interface ProductListParams {
+  page?: number;
+  limit?: number;
+  category?: string;
+  q?: string;
+  gender?: Product["gender"];
+  size?: string;
+  color?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  sort?: "price_asc" | "price_desc" | "rating" | "sold" | "newest";
+}
+
+interface CartItemPayload {
+  productId: string;
+  quantity?: number;
+  size?: string;
+  color?: string;
+}
+
+interface CreateOrderPayload {
+  items?: CartItemPayload[];
+  customerName: string;
+  phone: string;
+  address: string;
+  note?: string;
+  paymentProvider?: "cod" | "momo" | "vnpay" | "bank_transfer" | "stripe" | "paypal";
+}
+
+interface CreateReviewPayload {
+  productId: string;
+  rating: number;
+  comment?: string;
+  orderId?: string | null;
+}
+
+interface RecommendationParams {
+  limit?: number;
+  category?: string;
+  q?: string;
+}
+
+interface ChatPayload {
+  question: string;
+  limit?: number;
+}
+
+function getCategoryParts(category: ApiProduct["category"]) {
+  if (typeof category === "object" && category !== null) {
+    return {
+      id: category._id,
+      name: category.name,
+      slug: category.slug,
+    };
+  }
+
+  if (typeof category === "string") {
+    return {
+      id: category,
+      name: category,
+      slug: undefined,
+    };
+  }
+
+  return {
+    id: undefined,
+    name: "",
+    slug: undefined,
+  };
+}
+
+export function normalizeProduct(product: ApiProduct): Product {
+  const category = getCategoryParts(product.category);
+  const images = (product.images || []).map(resolveAssetUrl).filter(Boolean);
+  const originalPrice =
+    product.originalPrice && product.originalPrice > product.price
+      ? product.originalPrice
+      : undefined;
+
+  return {
+    id: product.slug || product._id,
+    _id: product._id,
+    productId: product._id,
+    slug: product.slug,
+    name: product.name,
+    category: category.name,
+    categoryId: category.id,
+    categorySlug: category.slug,
+    price: product.price,
+    originalPrice,
+    discount: originalPrice
+      ? Math.round((1 - product.price / originalPrice) * 100)
+      : undefined,
+    image: images[0] || "",
+    images,
+    description: product.description,
+    brand: product.brand,
+    material: product.material,
+    gender: product.gender,
+    sizes: product.sizes || [],
+    colors: product.colors || [],
+    stock: product.stock,
+    sold: product.sold,
+    averageRating: product.averageRating,
+    reviewCount: product.reviewCount,
+    isFeatured: product.isFeatured,
+  };
+}
+
+function normalizeCart(cart: ApiCartSummary): CartSummary {
+  const items = cart.items
+    .map((item): CartItem | null => {
+      if (!item.product) {
+        return null;
+      }
+
+      const product = normalizeProduct(item.product);
+
+      return {
+        ...product,
+        id: item._id,
+        cartItemId: item._id,
+        productId: item.product._id,
+        quantity: item.quantity,
+        size: item.size || "",
+        color: item.color || "",
+      };
+    })
+    .filter((item): item is CartItem => Boolean(item));
+
+  return {
+    items,
+    subtotal: cart.subtotal,
+    totalQuantity: cart.totalQuantity,
+  };
 }
 
 export const authApi = {
@@ -371,6 +602,185 @@ export const usersApi = {
     return request<MessageResponse>(`/users/${id}`, {
       method: "DELETE",
       auth: true,
+    });
+  },
+};
+
+export const categoriesApi = {
+  async getAll() {
+    return request<CategoriesResponse>("/categories");
+  },
+  async getById(id: string) {
+    return request<CategoryResponse>(`/categories/${id}`);
+  },
+};
+
+export const productsApi = {
+  async getAll(params: ProductListParams = {}) {
+    const response = await request<ProductsResponse>("/products", {
+      params,
+    });
+
+    return {
+      ...response,
+      products: response.products.map(normalizeProduct),
+    };
+  },
+  async getById(id: string) {
+    const response = await request<ProductResponse>(`/products/${id}`);
+
+    return {
+      ...response,
+      product: normalizeProduct(response.product),
+    };
+  },
+};
+
+export const cartApi = {
+  async get() {
+    const response = await request<CartResponse>("/cart", {
+      auth: true,
+    });
+
+    return {
+      ...response,
+      cart: normalizeCart(response.cart),
+    };
+  },
+  async addItem(payload: CartItemPayload) {
+    const response = await request<CartResponse>("/cart/items", {
+      method: "POST",
+      auth: true,
+      body: payload,
+    });
+
+    return {
+      ...response,
+      cart: normalizeCart(response.cart),
+    };
+  },
+  async updateItem(id: string, quantity: number) {
+    const response = await request<CartResponse>(`/cart/items/${id}`, {
+      method: "PUT",
+      auth: true,
+      body: { quantity },
+    });
+
+    return {
+      ...response,
+      cart: normalizeCart(response.cart),
+    };
+  },
+  async removeItem(id: string) {
+    const response = await request<CartResponse>(`/cart/items/${id}`, {
+      method: "DELETE",
+      auth: true,
+    });
+
+    return {
+      ...response,
+      cart: normalizeCart(response.cart),
+    };
+  },
+  async clear() {
+    const response = await request<CartResponse>("/cart", {
+      method: "DELETE",
+      auth: true,
+    });
+
+    return {
+      ...response,
+      cart: normalizeCart(response.cart),
+    };
+  },
+};
+
+export const ordersApi = {
+  create(payload: CreateOrderPayload) {
+    return request<OrderResponse>("/orders", {
+      method: "POST",
+      auth: true,
+      body: payload,
+    });
+  },
+  getMy() {
+    return request<OrdersResponse>("/orders/my", {
+      auth: true,
+    });
+  },
+  getById(id: string) {
+    return request<OrderResponse>(`/orders/${id}`, {
+      auth: true,
+    });
+  },
+  cancel(id: string) {
+    return request<OrderResponse>(`/orders/${id}/cancel`, {
+      method: "PATCH",
+      auth: true,
+    });
+  },
+};
+
+export const reviewsApi = {
+  getProductReviews(productId: string) {
+    return request<ReviewsResponse>(`/reviews/product/${productId}`);
+  },
+  create(payload: CreateReviewPayload) {
+    return request<ReviewResponse>("/reviews", {
+      method: "POST",
+      auth: true,
+      body: payload,
+    });
+  },
+};
+
+export const aiApi = {
+  async chat(payload: ChatPayload) {
+    const response = await request<ChatResponse>("/ai/chat", {
+      method: "POST",
+      auth: true,
+      body: payload,
+    });
+
+    return {
+      ...response,
+      products: response.products.map(normalizeProduct),
+    };
+  },
+  async getRecommendations(params: RecommendationParams = {}) {
+    const response = await request<RecommendationResponse>("/ai/recommendations", {
+      auth: true,
+      params,
+    });
+
+    return {
+      ...response,
+      products: response.products.map(normalizeProduct),
+    };
+  },
+  createBehaviorLog(payload: {
+    productId?: string;
+    product?: string;
+    action?: string;
+    keyword?: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    return request<MessageResponse>("/ai/behavior-logs", {
+      method: "POST",
+      auth: true,
+      body: payload,
+    });
+  },
+  createChatbotLog(payload: {
+    question: string;
+    answer?: string;
+    intent?: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    return request<MessageResponse>("/ai/chatbot-logs", {
+      method: "POST",
+      auth: true,
+      body: payload,
     });
   },
 };

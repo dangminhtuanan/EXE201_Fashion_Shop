@@ -2,6 +2,8 @@ import { Link } from 'react-router';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { Button } from '../components/ui/button';
+import { toast } from 'sonner';
+import { getErrorMessage } from '../lib/api';
 
 export function CartPage() {
   const { items, updateQuantity, removeItem, totalPrice } = useCart();
@@ -13,6 +15,22 @@ export function CartPage() {
   const estimatedTax = totalPrice * 0.1;
   const shipping = totalPrice > 500000 ? 0 : 30000;
   const finalTotal = totalPrice + estimatedTax + shipping;
+
+  const handleUpdateQuantity = async (id: string, quantity: number) => {
+    try {
+      await updateQuantity(id, quantity);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handleRemoveItem = async (id: string) => {
+    try {
+      await removeItem(id);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -76,7 +94,7 @@ export function CartPage() {
                         <p className="text-sm text-gray-500">{item.category}</p>
                       </div>
                       <button
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => void handleRemoveItem(item.id)}
                         className="text-gray-400 hover:text-red-500 transition-colors p-1"
                         aria-label="Xóa sản phẩm"
                       >
@@ -88,7 +106,7 @@ export function CartPage() {
                       {/* Quantity Controls */}
                       <div className="flex items-center border border-gray-200 rounded-lg">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => void handleUpdateQuantity(item.id, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                           className="p-2 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                           aria-label="Giảm số lượng"
@@ -99,7 +117,7 @@ export function CartPage() {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => void handleUpdateQuantity(item.id, item.quantity + 1)}
                           disabled={item.quantity >= 10}
                           className="p-2 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                           aria-label="Tăng số lượng"

@@ -3,6 +3,8 @@ const validator = require("validator");
 const bcrypt = require("bcryptjs");
 const { getNormalizedEmail } = require("./authController");
 
+const USER_ROLES = ["user", "customer", "staff", "manager", "admin"];
+
 function getDuplicateFieldMessage(error) {
   if (error?.code !== 11000 || !error.keyPattern) return null;
 
@@ -81,7 +83,7 @@ exports.createUser = async (req, res) => {
     if (!validator.isEmail(normalizedEmail)) {
       return res.status(400).json({ message: "Email không hợp lệ" });
     }
-    if (!["user", "admin"].includes(role)) {
+    if (!USER_ROLES.includes(role)) {
       return res.status(400).json({ message: "Role không hợp lệ" });
     }
     if (phone && (!validator.isMobilePhone(phone, 'vi-VN') || phone.length < 9 || phone.length > 12)) {
@@ -163,7 +165,7 @@ exports.updateUser = async (req, res) => {
       user.username = normalizedUsername;
     }
     if (role) {
-      if (!["user", "admin"].includes(role)) {
+      if (!USER_ROLES.includes(role)) {
         return res.status(400).json({ message: "Role không hợp lệ" });
       }
       user.role = role;

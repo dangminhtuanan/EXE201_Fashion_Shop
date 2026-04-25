@@ -5,7 +5,7 @@ import { Link } from 'react-router';
 
 interface ProductCardProps {
   product: Product;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (product: Product) => void | Promise<void>;
 }
 
 export function ProductCard({ product, onAddToCart }: ProductCardProps) {
@@ -13,7 +13,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
     <div className="group relative">
       <Link to={`/product/${product.id}`} className="block aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden mb-3 relative">
         <img
-          src={product.image}
+          src={product.image || "/favicon.svg"}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -54,7 +54,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => onAddToCart(product)}
+            onClick={() => void onAddToCart(product)}
             className="h-8 w-8 p-0"
           >
             <ShoppingBag className="h-4 w-4" />

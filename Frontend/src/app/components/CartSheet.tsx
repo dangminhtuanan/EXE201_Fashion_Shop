@@ -13,8 +13,8 @@ interface CartSheetProps {
   isOpen: boolean;
   onClose: () => void;
   items: CartItem[];
-  onUpdateQuantity: (id: string, quantity: number) => void;
-  onRemoveItem: (id: string) => void;
+  onUpdateQuantity: (id: string, quantity: number) => void | Promise<void>;
+  onRemoveItem: (id: string) => void | Promise<void>;
 }
 
 export function CartSheet({
@@ -58,7 +58,7 @@ export function CartSheet({
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 -mt-1"
-                          onClick={() => onRemoveItem(item.id)}
+                          onClick={() => void onRemoveItem(item.id)}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -71,7 +71,7 @@ export function CartSheet({
                             size="icon"
                             className="h-7 w-7"
                             onClick={() =>
-                              onUpdateQuantity(item.id, Math.max(1, item.quantity - 1))
+                              void onUpdateQuantity(item.id, Math.max(1, item.quantity - 1))
                             }
                           >
                             <Minus className="h-3 w-3" />
@@ -81,7 +81,7 @@ export function CartSheet({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                            onClick={() => void onUpdateQuantity(item.id, item.quantity + 1)}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>

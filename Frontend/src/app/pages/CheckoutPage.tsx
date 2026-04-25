@@ -2,14 +2,18 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ArrowLeft, CreditCard, Wallet, Building2, Check } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import { getErrorMessage, ordersApi } from '../lib/api';
+import { toast } from 'sonner';
 
 export function CheckoutPage() {
   const navigate = useNavigate();
   const { items, totalPrice, clearCart } = useCart();
+  const { isAuthenticated, isHydrating, user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,6 +34,26 @@ export function CheckoutPage() {
     }
   }, [items.length, navigate]);
 
+  useEffect(() => {
+    if (!isHydrating && !isAuthenticated) {
+      navigate('/login', { state: { from: '/checkout' }, replace: true });
+    }
+  }, [isAuthenticated, isHydrating, navigate]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      fullName: prev.fullName || user.username || '',
+      email: prev.email || user.email || '',
+      phone: prev.phone || user.phone || '',
+      address: prev.address || user.address || '',
+    }));
+  }, [user]);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
@@ -47,16 +71,52 @@ export function CheckoutPage() {
     e.preventDefault();
     setIsProcessing(true);
 
-    // Simulate order processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const paymentProvider =
+      paymentMethod === 'bank'
+        ? 'bank_transfer'
+        : paymentMethod === 'card'
+          ? 'stripe'
+          : 'cod';
 
-    // Clear cart and redirect to success page
-    clearCart();
-    setIsProcessing(false);
-    navigate('/order-success');
+    const shippingAddress = [
+      formData.address,
+      formData.ward,
+      formData.district,
+      formData.city,
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    try {
+      const response = await ordersApi.create({
+        customerName: formData.fullName.trim(),
+        phone: formData.phone.trim(),
+        address: shippingAddress,
+        note: formData.note.trim(),
+        paymentProvider,
+        items: items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+        })),
+      });
+
+      await clearCart();
+      navigate('/order-success', {
+        state: {
+          order: response.order,
+          email: formData.email,
+        },
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 || isHydrating || !isAuthenticated) {
     return null;
   }
 
