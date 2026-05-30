@@ -21,6 +21,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const payosRoutes = require("./routes/payosRoutes");
 const shippingRoutes = require("./routes/shippingRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 
@@ -34,6 +35,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/payos", payosRoutes);
 app.use("/api/shipping", shippingRoutes);
 app.use("/api/upload", uploadRoutes);
 

@@ -614,6 +614,54 @@
  *     responses:
  *       200:
  *         description: Order cancelled
+ * 
+  * /orders/checkout:
+ *   post:
+ *     summary: Create PayOS checkout URL
+ *     description: Create an order from current user's cart and generate a PayOS payment link.
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               customerName:
+ *                 type: string
+ *                 example: Nguyen Van A
+ *               phone:
+ *                 type: string
+ *                 example: "0901234567"
+ *               email:
+ *                 type: string
+ *                 example: nguyenvana@gmail.com
+ *               address:
+ *                 type: string
+ *                 example: Ho Chi Minh City
+ *               note:
+ *                 type: string
+ *                 example: Giao hàng giờ hành chính
+ *     responses:
+ *       201:
+ *         description: PayOS checkout created successfully
+ *
+ * /orders/payment-status/{orderCode}:
+ *   get:
+ *     summary: Get payment status by PayOS order code
+ *     tags: [Order]
+ *     parameters:
+ *       - in: path
+ *         name: orderCode
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           example: 17486123456789
+ *     responses:
+ *       200:
+ *         description: Payment status retrieved successfully
  */
 
 /**

@@ -2,6 +2,8 @@ const express = require("express");
 const {
   cancelMyOrder,
   createOrder,
+  createPayOSCheckout,
+  getPaymentStatusByOrderCode,
   getMyOrders,
   getOrderById,
   getOrders,
@@ -14,7 +16,9 @@ const router = express.Router();
 const staffOnly = [authMiddleware, requireRoles("admin", "manager", "staff")];
 
 router.post("/", authMiddleware, createOrder);
+router.post("/checkout", authMiddleware, createPayOSCheckout);
 router.get("/my", authMiddleware, getMyOrders);
+router.get("/payment-status/:orderCode", getPaymentStatusByOrderCode);
 router.get("/", staffOnly, getOrders);
 router.get("/:id", authMiddleware, getOrderById);
 router.patch("/:id/status", staffOnly, updateOrderStatus);

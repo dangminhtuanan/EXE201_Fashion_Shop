@@ -14,8 +14,23 @@ const paymentSchema = new mongoose.Schema(
     },
     provider: {
       type: String,
-      enum: ["cod", "momo", "vnpay", "bank_transfer", "stripe", "paypal"],
+      enum: ["cod", "momo", "vnpay", "bank_transfer", "stripe", "paypal", "PAYOS"],
       default: "cod",
+    },
+    orderCode: {
+      type: Number,
+      unique: true,
+      sparse: true,
+    },
+    paymentLinkId: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    checkoutUrl: {
+      type: String,
+      default: "",
+      trim: true,
     },
     amount: {
       type: Number,
@@ -24,7 +39,7 @@ const paymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "paid", "failed", "refunded"],
+      enum: ["pending", "paid", "failed", "refunded", "PENDING", "PAID", "CANCELLED", "FAILED"],
       default: "pending",
     },
     transactionNo: {
@@ -32,8 +47,17 @@ const paymentSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    transactionReference: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     paidAt: {
       type: Date,
+      default: null,
+    },
+    rawWebhookPayload: {
+      type: mongoose.Schema.Types.Mixed,
       default: null,
     },
     rawResponse: {
