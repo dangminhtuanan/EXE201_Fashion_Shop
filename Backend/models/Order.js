@@ -102,6 +102,16 @@ const orderSchema = new mongoose.Schema(
       ref: "Payment",
       default: null,
     },
+    shipping: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Shipping",
+      default: null,
+    },
+    shipper: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true }
 );

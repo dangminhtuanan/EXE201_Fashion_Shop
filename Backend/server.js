@@ -21,6 +21,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const shippingRoutes = require("./routes/shippingRoutes");
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api", profileRoutes);
@@ -31,6 +32,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/shipping", shippingRoutes);
 app.get("/", (req, res) => {
   res.send("API đang chạy! Thêm /docs để mở Swagger");
 });
