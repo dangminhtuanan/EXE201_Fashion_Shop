@@ -1,9 +1,13 @@
 const AIBehaviorLog = require("../models/AIBehaviorLog");
+const AIOutfitRecommendation = require("../models/AIOutfitRecommendation");
 const AIRecommendation = require("../models/AIRecommendation");
 const ChatbotLog = require("../models/ChatbotLog");
 const Product = require("../models/Product");
+const fs = require("fs/promises");
+const path = require("path");
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta";
+const FITROOM_API_URL = "https://platform.fitroom.app";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const GEMINI_FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || "gemini-2.0-flash,gemini-1.5-flash")
   .split(",")
@@ -12,6 +16,159 @@ const GEMINI_FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || "gemini-2.
 
 function escapeRegex(value) {
   return value.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getMimeType(filePathOrUrl) {
+  const extension = path.extname(filePathOrUrl.split("?")[0]).toLowerCase();
+
+  if (extension === ".png") return "image/png";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".gif") return "image/gif";
+  return "image/jpeg";
+}
+
+function getFilename(filePathOrUrl, fallback) {
+  const cleanValue = filePathOrUrl.split("?")[0];
+  const filename = path.basename(cleanValue);
+  return filename && filename.includes(".") ? filename : fallback;
+}
+
+function resolveImageSource(source) {
+  if (/^https?:\/\//i.test(source)) {
+    return source;
+  }
+
+  if (source.startsWith("/src/") || source.startsWith("/assets/")) {
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    return `${frontendUrl.replace(/\/+$/, "")}${source}`;
+  }
+
+  if (source.startsWith("/image/")) {
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    return `${backendUrl.replace(/\/+$/, "")}${source}`;
+  }
+
+  return source;
+}
+
+async function imageSourceToBlob(source, fallbackFilename, label = "image") {
+  if (!source) {
+    throw new Error("Image URL is required");
+  }
+
+  const resolvedSource = resolveImageSource(source);
+
+  if (/^https?:\/\//i.test(resolvedSource)) {
+    const response = await fetch(resolvedSource);
+
+    if (!response.ok) {
+      throw new Error(`Cannot download ${label} image: ${response.status} (${resolvedSource})`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const mimeType = response.headers.get("content-type") || getMimeType(source);
+
+    return {
+      blob: new Blob([arrayBuffer], { type: mimeType }),
+      filename: getFilename(resolvedSource, fallbackFilename),
+    };
+  }
+
+  const localPath = path.resolve(__dirname, "..", resolvedSource.replace(/^\/+/, ""));
+  const buffer = await fs.readFile(localPath).catch((error) => {
+    throw new Error(`Cannot read ${label} image: ${error.message}`);
+  });
+
+  return {
+    blob: new Blob([buffer], { type: getMimeType(localPath) }),
+    filename: getFilename(localPath, fallbackFilename),
+  };
+}
+
+function normalizeFitroomClothType(value) {
+  if (value === "lower" || value === "full_set" || value === "combo") {
+    return value;
+  }
+
+  if (value === "full") {
+    return "full_set";
+  }
+
+  return "upper";
+}
+
+async function createFitroomTask({ modelImageUrl, clothingImageUrl, clothType, hdMode }) {
+  const apiKey = process.env.FITROOM_API_KEY;
+
+  if (!apiKey) {
+    const error = new Error("Missing FITROOM_API_KEY");
+    error.statusCode = 503;
+    error.code = "MISSING_FITROOM_API_KEY";
+    throw error;
+  }
+
+  const modelImage = await imageSourceToBlob(modelImageUrl, "model.jpg", "model");
+  const clothingImage = await imageSourceToBlob(clothingImageUrl, "cloth.jpg", "clothing");
+
+  const formData = new FormData();
+  formData.append("model_image", modelImage.blob, modelImage.filename);
+  formData.append("cloth_image", clothingImage.blob, clothingImage.filename);
+  formData.append("cloth_type", clothType);
+  formData.append("hd_mode", hdMode ? "true" : "false");
+
+  const response = await fetch(`${FITROOM_API_URL}/api/tryon/v2/tasks`, {
+    method: "POST",
+    headers: {
+      "X-API-KEY": apiKey,
+    },
+    body: formData,
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(data?.message || data?.error || "Cannot create Fitroom try-on task");
+    error.statusCode = response.status;
+    error.providerResponse = data;
+    throw error;
+  }
+
+  return data;
+}
+
+async function getFitroomTaskStatus(taskId) {
+  const response = await fetch(`${FITROOM_API_URL}/api/tryon/v2/tasks/${taskId}`, {
+    headers: {
+      "X-API-KEY": process.env.FITROOM_API_KEY,
+    },
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(data?.message || data?.error || "Cannot get Fitroom task status");
+    error.statusCode = response.status;
+    error.providerResponse = data;
+    throw error;
+  }
+
+  return data;
+}
+
+async function waitForFitroomResult(taskId, maxAttempts = 35) {
+  let latestStatus = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+
+    latestStatus = await getFitroomTaskStatus(taskId);
+
+    if (latestStatus.status === "COMPLETED" || latestStatus.status === "FAILED") {
+      return latestStatus;
+    }
+  }
+
+  return latestStatus;
 }
 
 function normalizeText(value = "") {
@@ -394,6 +551,113 @@ exports.chatWithGemini = async (req, res) => {
       error: error.message,
       model: error.model,
     });
+  }
+};
+
+exports.createTryOn = async (req, res) => {
+  let outfitLog = null;
+
+  try {
+    const modelImageUrl = String(req.body.modelImageUrl || "").trim();
+    const requestedClothingImageUrl = String(req.body.clothingImageUrl || "").trim();
+    const productId = req.body.productId || null;
+    const clothType = normalizeFitroomClothType(req.body.clothType || "upper");
+    const hdMode = req.body.hdMode === true || req.body.hdMode === "true";
+
+    if (!modelImageUrl) {
+      return res.status(400).json({ message: "Model image URL is required" });
+    }
+
+    let product = null;
+    if (productId) {
+      product = await Product.findById(productId);
+    }
+
+    const clothingImageUrl = requestedClothingImageUrl || product?.images?.[0] || "";
+    if (!clothingImageUrl) {
+      return res.status(400).json({ message: "Clothing image URL is required" });
+    }
+
+    outfitLog = await AIOutfitRecommendation.create({
+      user: req.user?.id || null,
+      product: product?._id || null,
+      modelImageUrl,
+      clothingImageUrl,
+      clothType,
+      hdMode,
+      status: "CREATED",
+      progress: 0,
+    });
+
+    const task = await createFitroomTask({
+      modelImageUrl,
+      clothingImageUrl,
+      clothType,
+      hdMode,
+    });
+
+    outfitLog.taskId = task.task_id || task.id || "";
+    outfitLog.status = task.status || "CREATED";
+    outfitLog.rawResponse = task;
+    await outfitLog.save();
+
+    const taskStatus = await waitForFitroomResult(outfitLog.taskId);
+    if (taskStatus) {
+      outfitLog.status = taskStatus.status || outfitLog.status;
+      outfitLog.progress = Number(taskStatus.progress) || outfitLog.progress;
+      outfitLog.resultImageUrl = taskStatus.download_signed_url || outfitLog.resultImageUrl;
+      outfitLog.error = taskStatus.error || "";
+      outfitLog.rawResponse = taskStatus;
+      await outfitLog.save();
+    }
+
+    if (outfitLog.status === "FAILED") {
+      return res.status(502).json({
+        message: outfitLog.error || "Fitroom try-on failed",
+        recommendation: outfitLog,
+      });
+    }
+
+    res.status(201).json({
+      message:
+        outfitLog.status === "COMPLETED"
+          ? "Create AI try-on successfully"
+          : "AI try-on task is still processing",
+      recommendation: outfitLog,
+      taskId: outfitLog.taskId,
+      status: outfitLog.status,
+      progress: outfitLog.progress,
+      resultImageUrl: outfitLog.resultImageUrl,
+    });
+  } catch (error) {
+    if (outfitLog) {
+      outfitLog.status = "FAILED";
+      outfitLog.error = error.message;
+      outfitLog.rawResponse = error.providerResponse || outfitLog.rawResponse;
+      await outfitLog.save().catch(() => {});
+    }
+
+    res.status(error.statusCode || 500).json({
+      message:
+        error.code === "MISSING_FITROOM_API_KEY"
+          ? "Fitroom API key is not configured"
+          : error.message || "Cannot create AI try-on",
+      error: error.message,
+    });
+  }
+};
+
+exports.getMyTryOns = async (req, res) => {
+  try {
+    const filter = req.user?.id ? { user: req.user.id } : { user: null };
+    const recommendations = await AIOutfitRecommendation.find(filter)
+      .populate("product", "name slug images price")
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json({ message: "Get AI try-ons successfully", recommendations });
+  } catch (error) {
+    res.status(500).json({ message: "Cannot get AI try-ons", error: error.message });
   }
 };
 

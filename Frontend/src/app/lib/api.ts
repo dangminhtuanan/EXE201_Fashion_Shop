@@ -345,6 +345,14 @@ interface ChatResponse extends MessageResponse {
   products: ApiProduct[];
 }
 
+interface TryOnResponse extends MessageResponse {
+  taskId: string;
+  status: string;
+  progress: number;
+  resultImageUrl?: string;
+  recommendation: unknown;
+}
+
 interface UploadImageResponse extends MessageResponse {
   url: string;
   public_id: string;
@@ -397,6 +405,14 @@ interface RecommendationParams {
 interface ChatPayload {
   question: string;
   limit?: number;
+}
+
+interface TryOnPayload {
+  modelImageUrl: string;
+  clothingImageUrl?: string;
+  productId?: string;
+  clothType?: "upper" | "lower" | "full_set" | "combo";
+  hdMode?: boolean;
 }
 
 function getCategoryParts(category: ApiProduct["category"]) {
@@ -808,6 +824,13 @@ export const aiApi = {
     metadata?: Record<string, unknown>;
   }) {
     return request<MessageResponse>("/ai/behavior-logs", {
+      method: "POST",
+      auth: true,
+      body: payload,
+    });
+  },
+  createTryOn(payload: TryOnPayload) {
+    return request<TryOnResponse>("/ai/try-on", {
       method: "POST",
       auth: true,
       body: payload,

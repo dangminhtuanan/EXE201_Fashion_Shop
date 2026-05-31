@@ -2,9 +2,11 @@ const express = require("express");
 const {
   createBehaviorLog,
   createChatbotLog,
+  createTryOn,
   chatWithGemini,
   getBehaviorLogs,
   getChatbotLogs,
+  getMyTryOns,
   getRecommendations,
 } = require("../controllers/aiController");
 const authMiddleware = require("../middleware/authMiddleware");
@@ -16,6 +18,8 @@ const staffOnly = [authMiddleware, requireRoles("admin", "manager", "staff")];
 
 router.get("/recommendations", optionalAuthMiddleware, getRecommendations);
 router.post("/chat", optionalAuthMiddleware, chatWithGemini);
+router.post("/try-on", optionalAuthMiddleware, createTryOn);
+router.get("/try-ons/my", optionalAuthMiddleware, getMyTryOns);
 router.post("/behavior-logs", optionalAuthMiddleware, createBehaviorLog);
 router.post("/chatbot-logs", optionalAuthMiddleware, createChatbotLog);
 router.get("/behavior-logs", staffOnly, getBehaviorLogs);

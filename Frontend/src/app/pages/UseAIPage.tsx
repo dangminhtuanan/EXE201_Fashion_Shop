@@ -42,7 +42,7 @@ import tshirtProduct from '@/assets/8a55393af5b2913bc9b718f78f6d9d7649ea15b6.png
 import modelWithTshirt from '@/assets/04a106332b46fd32e303290a6fcb306e80cb9a91.png';
 import outfitComplete from '@/assets/d027e7715d02e5973bda20d895640cb4a33ba4d1.png';
 import modelWhiteOutfit from '@/assets/027f9141fc5b4d041b83cbfd34283e0f6c08e067.png';
-import { getErrorMessage, productsApi, uploadApi } from '../lib/api';
+import { aiApi, getErrorMessage, productsApi, uploadApi } from '../lib/api';
 import type { Product } from '../types';
 
 const CLOTHES_IMAGES = [
@@ -180,6 +180,7 @@ export function UseAIPage() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [uploadedModelImages, setUploadedModelImages] = useState<string[]>([]);
   const [isUploadingModel, setIsUploadingModel] = useState(false);
+  const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -216,8 +217,8 @@ export function UseAIPage() {
   }, []);
 
   const productChoices = useMemo(
-    () => products.filter((product) => Boolean(product.image)),
-    [products]
+    () => products.filter((product) => Boolean(product.image) && !brokenImageUrls.has(product.image)),
+    [brokenImageUrls, products]
   );
 
   const modelChoices = useMemo(
@@ -253,16 +254,56 @@ export function UseAIPage() {
     }
   };
 
-  const handleGenerate = () => {
+  const markBrokenImage = (url?: string) => {
+    if (!url) {
+      return;
+    }
+
+    setBrokenImageUrls((prev) => {
+      const next = new Set(prev);
+      next.add(url);
+      return next;
+    });
+  };
+
+  const handleGenerate = async () => {
     if (selectedClothing === null || selectedModel === null) {
       return;
     }
+
+    const selectedProduct = productChoices[selectedClothing];
+    const selectedModelImage = modelChoices[selectedModel];
+
+    if (!selectedProduct || !selectedModelImage) {
+      return;
+    }
+
+    if (brokenImageUrls.has(selectedProduct.image)) {
+      alert('Anh san pham nay dang loi 404. Vui long chon san pham co anh hop le.');
+      return;
+    }
+
     setIsGenerating(true);
-    // Simulate AI generation process
-    setTimeout(() => {
-      setGeneratedResult(selectedModel !== null ? modelChoices[selectedModel] || modelWithTshirt : modelWithTshirt);
+    try {
+      const response = await aiApi.createTryOn({
+        modelImageUrl: selectedModelImage,
+        clothingImageUrl: selectedProduct.image,
+        productId: selectedProduct.productId,
+        clothType: 'upper',
+        hdMode: highQuality,
+      });
+
+      if (!response.resultImageUrl) {
+        alert('AI dang xu ly, vui long thu lai sau it phut.');
+        return;
+      }
+
+      setGeneratedResult(response.resultImageUrl);
+    } catch (error) {
+      alert(getErrorMessage(error));
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
   };
 
   const handleReset = () => {
@@ -271,16 +312,44 @@ export function UseAIPage() {
     setSelectedModel(null);
   };
   
-  const handleGenerateStyling = () => {
+  const handleGenerateStyling = async () => {
     if (stylingClothing === null || stylingModel === null) {
       return;
     }
+
+    const selectedProduct = productChoices[stylingClothing];
+    const selectedModelImage = modelChoices[stylingModel];
+
+    if (!selectedProduct || !selectedModelImage) {
+      return;
+    }
+
+    if (brokenImageUrls.has(selectedProduct.image)) {
+      alert('Anh san pham nay dang loi 404. Vui long chon san pham co anh hop le.');
+      return;
+    }
+
     setIsGeneratingStyling(true);
-    // Simulate AI styling generation
-    setTimeout(() => {
-      setStylingResult(stylingModel !== null ? modelChoices[stylingModel] || outfitComplete : outfitComplete);
+    try {
+      const response = await aiApi.createTryOn({
+        modelImageUrl: selectedModelImage,
+        clothingImageUrl: selectedProduct.image,
+        productId: selectedProduct.productId,
+        clothType: 'upper',
+        hdMode: highQuality,
+      });
+
+      if (!response.resultImageUrl) {
+        alert('AI dang xu ly, vui long thu lai sau it phut.');
+        return;
+      }
+
+      setStylingResult(response.resultImageUrl);
+    } catch (error) {
+      alert(getErrorMessage(error));
+    } finally {
       setIsGeneratingStyling(false);
-    }, 2000);
+    }
   };
 
   const handleResetStyling = () => {
@@ -426,7 +495,12 @@ export function UseAIPage() {
                             : 'border-gray-200 hover:border-[#20B29A]'
                         }`}
                       >
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          onError={() => markBrokenImage(product.image)}
+                        />
                         {selectedClothing === i && (
                           <div className="absolute top-1 right-1 bg-[#20B29A] rounded-full p-0.5">
                             <Check className="w-3 h-3 text-white" />
@@ -524,7 +598,12 @@ export function UseAIPage() {
                             : 'border-gray-200 hover:border-[#20B29A]'
                         }`}
                       >
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          onError={() => markBrokenImage(product.image)}
+                        />
                         {stylingClothing === i && (
                           <div className="absolute top-1 right-1 bg-[#20B29A] rounded-full p-0.5">
                             <Check className="w-3 h-3 text-white" />
