@@ -82,7 +82,18 @@ export interface Order {
   phone: string;
   address: string;
   note?: string;
-  status: "pending" | "confirmed" | "packing" | "shipping" | "completed" | "cancelled" | "refunded";
+  status:
+    | "pending"
+    | "confirmed"
+    | "packing"
+    | "shipping"
+    | "completed"
+    | "cancelled"
+    | "refunded"
+    | "PENDING_PAYMENT"
+    | "PAID"
+    | "CANCELLED"
+    | "FAILED";
   totalAmount: number;
   paymentStatus: "unpaid" | "pending" | "paid" | "failed" | "refunded";
   payment?: unknown;

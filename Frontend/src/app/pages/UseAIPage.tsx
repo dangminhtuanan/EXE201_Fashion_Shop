@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Home,
   Shirt,
@@ -42,6 +42,8 @@ import tshirtProduct from '@/assets/8a55393af5b2913bc9b718f78f6d9d7649ea15b6.png
 import modelWithTshirt from '@/assets/04a106332b46fd32e303290a6fcb306e80cb9a91.png';
 import outfitComplete from '@/assets/d027e7715d02e5973bda20d895640cb4a33ba4d1.png';
 import modelWhiteOutfit from '@/assets/027f9141fc5b4d041b83cbfd34283e0f6c08e067.png';
+import { getErrorMessage, productsApi, uploadApi } from '../lib/api';
+import type { Product } from '../types';
 
 const CLOTHES_IMAGES = [
   tshirtProduct, // Add the ICDN tshirt as first item
@@ -174,6 +176,82 @@ export function UseAIPage() {
   const [stylingModel, setStylingModel] = useState<number | null>(null);
   const [isGeneratingStyling, setIsGeneratingStyling] = useState(false);
   const [stylingResult, setStylingResult] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [uploadedModelImages, setUploadedModelImages] = useState<string[]>([]);
+  const [isUploadingModel, setIsUploadingModel] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProducts = async () => {
+      setIsLoadingProducts(true);
+      try {
+        const response = await productsApi.getAll({
+          limit: 100,
+          sort: 'newest',
+          inStock: true,
+        });
+
+        if (!cancelled) {
+          setProducts(response.products);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setProducts([]);
+          alert(getErrorMessage(error));
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingProducts(false);
+        }
+      }
+    };
+
+    void loadProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const productChoices = useMemo(
+    () => products.filter((product) => Boolean(product.image)),
+    [products]
+  );
+
+  const modelChoices = useMemo(
+    () => [...uploadedModelImages, ...MODEL_IMAGES],
+    [uploadedModelImages]
+  );
+
+  const handleUploadModelImage = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    target: 'try-on' | 'styling'
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    setIsUploadingModel(true);
+    try {
+      const response = await uploadApi.uploadImage(file);
+      setUploadedModelImages((prev) => [response.url, ...prev]);
+
+      if (target === 'try-on') {
+        setSelectedModel(0);
+      } else {
+        setStylingModel(0);
+      }
+    } catch (error) {
+      alert(getErrorMessage(error));
+    } finally {
+      setIsUploadingModel(false);
+    }
+  };
 
   const handleGenerate = () => {
     if (selectedClothing === null || selectedModel === null) {
@@ -182,7 +260,7 @@ export function UseAIPage() {
     setIsGenerating(true);
     // Simulate AI generation process
     setTimeout(() => {
-      setGeneratedResult(modelWithTshirt);
+      setGeneratedResult(selectedModel !== null ? modelChoices[selectedModel] || modelWithTshirt : modelWithTshirt);
       setIsGenerating(false);
     }, 2000);
   };
@@ -200,7 +278,7 @@ export function UseAIPage() {
     setIsGeneratingStyling(true);
     // Simulate AI styling generation
     setTimeout(() => {
-      setStylingResult(outfitComplete);
+      setStylingResult(stylingModel !== null ? modelChoices[stylingModel] || outfitComplete : outfitComplete);
       setIsGeneratingStyling(false);
     }, 2000);
   };
@@ -313,15 +391,34 @@ export function UseAIPage() {
                     <p className="text-xs text-gray-500">Hoặc kéo & thả vào đây</p>
                   </div>
 
+                  <label className="border border-gray-200 rounded-xl bg-white flex flex-col items-center justify-center py-4 mb-6 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="flex items-center justify-center text-[#20B29A] font-medium mb-1 gap-1">
+                      <Upload className="w-4 h-4" /> Upload anh mau len Cloudinary
+                    </div>
+                    <p className="text-xs text-gray-500">{isUploadingModel ? 'Dang upload...' : 'Chon anh nguoi dung de thu do'}</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => void handleUploadModelImage(event, 'try-on')}
+                    />
+                  </label>
+
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">Mục gần đây</h3>
                     <button className="text-xs font-medium text-[#20B29A] hover:underline">Xem tất cả</button>
                   </div>
 
                   <div className="flex overflow-x-auto gap-2 pb-2 -mx-1 px-1 scrollbar-hide">
-                    {CLOTHES_IMAGES.map((src, i) => (
+                    {isLoadingProducts && (
+                      <div className="text-xs text-gray-500 py-4">Dang tai san pham...</div>
+                    )}
+                    {!isLoadingProducts && productChoices.length === 0 && (
+                      <div className="text-xs text-gray-500 py-4">Chua co san pham co anh trong API.</div>
+                    )}
+                    {productChoices.map((product, i) => (
                       <button 
-                        key={i} 
+                        key={product.productId || product.id} 
                         onClick={() => setSelectedClothing(i)}
                         className={`relative w-14 h-[76px] flex-shrink-0 rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
                           selectedClothing === i 
@@ -329,14 +426,14 @@ export function UseAIPage() {
                             : 'border-gray-200 hover:border-[#20B29A]'
                         }`}
                       >
-                        <img src={src} alt="Clothing item" className="w-full h-full object-cover" />
+                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                         {selectedClothing === i && (
                           <div className="absolute top-1 right-1 bg-[#20B29A] rounded-full p-0.5">
                             <Check className="w-3 h-3 text-white" />
                           </div>
                         )}
                         <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-[9px] px-1 py-0.5 font-medium text-center">
-                          {i === 0 ? 'ICDN' : 'Demo'}
+                          {product.name}
                         </div>
                       </button>
                     ))}
@@ -370,7 +467,18 @@ export function UseAIPage() {
                       <span className="text-xs font-medium">Tải lên</span>
                     </button>
 
-                    {MODEL_IMAGES.map((src, i) => (
+                    <label className="border border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center aspect-[3/4] bg-gray-50 hover:bg-gray-100 text-gray-500 transition-colors cursor-pointer">
+                      <Upload className="w-5 h-5 mb-1" />
+                      <span className="text-xs font-medium">{isUploadingModel ? 'Dang tai' : 'Cloudinary'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => void handleUploadModelImage(event, 'try-on')}
+                      />
+                    </label>
+
+                    {modelChoices.map((src, i) => (
                       <button
                         key={i}
                         onClick={() => setSelectedModel(i)}
@@ -400,9 +508,15 @@ export function UseAIPage() {
                   <p className="text-xs text-gray-500 mb-4">Chọn sản phẩm bạn muốn phối đồ</p>
 
                   <div className="flex overflow-x-auto gap-2 pb-2 -mx-1 px-1 scrollbar-hide mb-4">
-                    {CLOTHES_IMAGES.map((src, i) => (
+                    {isLoadingProducts && (
+                      <div className="text-xs text-gray-500 py-4">Dang tai san pham...</div>
+                    )}
+                    {!isLoadingProducts && productChoices.length === 0 && (
+                      <div className="text-xs text-gray-500 py-4">Chua co san pham co anh trong API.</div>
+                    )}
+                    {productChoices.map((product, i) => (
                       <button 
-                        key={i} 
+                        key={product.productId || product.id} 
                         onClick={() => setStylingClothing(i)}
                         className={`relative w-14 h-[76px] flex-shrink-0 rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
                           stylingClothing === i 
@@ -410,14 +524,14 @@ export function UseAIPage() {
                             : 'border-gray-200 hover:border-[#20B29A]'
                         }`}
                       >
-                        <img src={src} alt="Clothing item" className="w-full h-full object-cover" />
+                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                         {stylingClothing === i && (
                           <div className="absolute top-1 right-1 bg-[#20B29A] rounded-full p-0.5">
                             <Check className="w-3 h-3 text-white" />
                           </div>
                         )}
                         <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-[9px] px-1 py-0.5 font-medium text-center">
-                          {i === 0 ? 'ICDN' : 'Demo'}
+                          {product.name}
                         </div>
                       </button>
                     ))}
@@ -432,7 +546,18 @@ export function UseAIPage() {
                   <p className="text-xs text-gray-500 mb-4">Chọn người mẫu để xem gợi ý phối đồ</p>
 
                   <div className="grid grid-cols-4 gap-2">
-                    {MODEL_IMAGES.slice(0, 8).map((src, i) => (
+                    <label className="border border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center aspect-[3/4] bg-gray-50 hover:bg-gray-100 text-gray-500 transition-colors cursor-pointer">
+                      <Upload className="w-5 h-5 mb-1" />
+                      <span className="text-xs font-medium">{isUploadingModel ? 'Dang tai' : 'Cloudinary'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => void handleUploadModelImage(event, 'styling')}
+                      />
+                    </label>
+
+                    {modelChoices.slice(0, 8).map((src, i) => (
                       <button
                         key={i}
                         onClick={() => setStylingModel(i)}

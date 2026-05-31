@@ -11,6 +11,7 @@ import { OrderSuccessPage } from './pages/OrderSuccessPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { PaymentResultPage } from './pages/PaymentResultPage';
 import { GuestOnlyRoute, RequireAdmin, RequireAuth } from './components/RouteGuards';
 
 export const router = createBrowserRouter([
@@ -37,6 +38,14 @@ export const router = createBrowserRouter([
       {
         path: 'order-success',
         Component: OrderSuccessPage,
+      },
+      {
+        path: 'payment/return',
+        Component: () => <PaymentResultPage mode="return" />,
+      },
+      {
+        path: 'payment/cancel',
+        Component: () => <PaymentResultPage mode="cancel" />,
       },
       {
         Component: RequireAuth,

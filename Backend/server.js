@@ -1,9 +1,10 @@
 const express = require("express");
 const dotenv = require("dotenv");
+const path = require("path");
 const cors = require("cors");
 const connectDB = require("./config/db");
 const swaggerDocs = require("./swagger"); 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, ".env"), quiet: true });
 const app = express();
 
 app.use(express.json());

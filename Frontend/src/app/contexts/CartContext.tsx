@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { cartApi } from "../lib/api";
+import { ApiError, cartApi } from "../lib/api";
 import type { CartItem, Product } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -67,6 +67,10 @@ function getProductId(product: Product) {
   return product.productId || product._id || product.id;
 }
 
+function isAuthError(error: unknown) {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
+
 function buildGuestCartItem(
   product: Product,
   quantity: number,
@@ -110,8 +114,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const response = await cartApi.get();
-    setItems(response.cart.items);
+    try {
+      const response = await cartApi.get();
+      setItems(response.cart.items);
+    } catch (error) {
+      if (isAuthError(error)) {
+        setItems(readGuestCart());
+        return;
+      }
+
+      throw error;
+    }
   };
 
   useEffect(() => {
@@ -148,9 +161,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
           clearGuestCart();
         }
 
-        const response = await cartApi.get();
-        if (!cancelled) {
-          setItems(response.cart.items);
+        try {
+          const response = await cartApi.get();
+          if (!cancelled) {
+            setItems(response.cart.items);
+          }
+        } catch (error) {
+          if (!cancelled && isAuthError(error)) {
+            setItems(readGuestCart());
+            return;
+          }
+
+          throw error;
         }
       } finally {
         if (!cancelled) {

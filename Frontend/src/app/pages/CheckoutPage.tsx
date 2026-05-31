@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ArrowLeft, CreditCard, Wallet, Building2, Check } from 'lucide-react';
+import { ArrowLeft, CreditCard, Wallet, Building2, Check, QrCode } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
@@ -71,13 +71,6 @@ export function CheckoutPage() {
     e.preventDefault();
     setIsProcessing(true);
 
-    const paymentProvider =
-      paymentMethod === 'bank'
-        ? 'bank_transfer'
-        : paymentMethod === 'card'
-          ? 'stripe'
-          : 'cod';
-
     const shippingAddress = [
       formData.address,
       formData.ward,
@@ -88,8 +81,35 @@ export function CheckoutPage() {
       .join(', ');
 
     try {
+      if (paymentMethod === 'payos') {
+        if (!formData.email.trim()) {
+          toast.error('Vui lòng nhập email để thanh toán qua PayOS');
+          return;
+        }
+
+        const response = await ordersApi.createPayOSCheckout({
+          customerName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          address: shippingAddress,
+          note: formData.note.trim(),
+        });
+
+        await clearCart();
+        window.location.assign(response.checkoutUrl);
+        return;
+      }
+
+      const paymentProvider =
+        paymentMethod === 'bank'
+          ? 'bank_transfer'
+          : paymentMethod === 'card'
+            ? 'stripe'
+            : 'cod';
+
       const response = await ordersApi.create({
         customerName: formData.fullName.trim(),
+        email: formData.email.trim(),
         phone: formData.phone.trim(),
         address: shippingAddress,
         note: formData.note.trim(),
@@ -259,6 +279,29 @@ export function CheckoutPage() {
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="space-y-3">
                     <label
+                      htmlFor="payos"
+                      className={`flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                        paymentMethod === 'payos' ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <RadioGroupItem value="payos" id="payos" />
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
+                            <QrCode className="w-5 h-5 text-cyan-700" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">Thanh toán PayOS</p>
+                            <p className="text-sm text-gray-500">Quét QR hoặc thanh toán qua ngân hàng</p>
+                          </div>
+                        </div>
+                      </div>
+                      {paymentMethod === 'payos' && (
+                        <Check className="w-5 h-5 text-black" />
+                      )}
+                    </label>
+
+                    <label
                       htmlFor="cod"
                       className={`flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all ${
                         paymentMethod === 'cod' ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'
@@ -328,6 +371,15 @@ export function CheckoutPage() {
                     </label>
                   </div>
                 </RadioGroup>
+
+                {paymentMethod === 'payos' && (
+                  <div className="mt-4 p-4 bg-cyan-50 rounded-lg border border-cyan-100">
+                    <p className="text-sm text-cyan-900 font-medium mb-1">Thanh toán qua PayOS</p>
+                    <p className="text-sm text-cyan-800">
+                      Sau khi bấm thanh toán, bạn sẽ được chuyển sang cổng PayOS để quét QR hoặc chuyển khoản.
+                    </p>
+                  </div>
+                )}
 
                 {paymentMethod === 'bank' && (
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
@@ -405,7 +457,11 @@ export function CheckoutPage() {
                   disabled={isProcessing}
                   className="w-full bg-black text-white hover:bg-gray-800 py-6 text-base font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isProcessing ? 'Đang xử lý...' : 'Hoàn tất đơn hàng'}
+                  {isProcessing
+                    ? 'Đang xử lý...'
+                    : paymentMethod === 'payos'
+                      ? 'Thanh toán qua PayOS'
+                      : 'Hoàn tất đơn hàng'}
                 </Button>
 
                 <p className="text-xs text-gray-500 text-center mt-4">

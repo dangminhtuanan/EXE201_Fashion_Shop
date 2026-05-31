@@ -223,7 +223,7 @@ exports.createPayOSCheckout = async (req, res) => {
 
     const totals = calculateCheckoutTotals(orderItems);
     const orderCode = generatePayOSOrderCode();
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const payOS = getPayOSClient();
 
     const order = await Order.create({

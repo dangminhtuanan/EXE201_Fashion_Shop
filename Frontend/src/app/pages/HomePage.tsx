@@ -75,7 +75,7 @@ export function HomePage() {
       <Hero imageUrl="https://images.unsplash.com/photo-1762430815620-fcca603c240c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXNoaW9uJTIwbW9kZWwlMjBydW53YXl8ZW58MXx8fHwxNzczMDY2MzQ4fDA&ixlib=rb-4.1.0&q=80&w=1080" />
 
       <section className="py-8 border-b">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto max-w-6xl px-4">
           <div className="flex gap-4 overflow-x-auto pb-2">
             <button
               onClick={() => setSelectedCategory("")}
@@ -111,10 +111,10 @@ export function HomePage() {
         <div className="container mx-auto px-4">
           <h2 className="text-2xl font-bold mb-8">San pham noi bat</h2>
           {loadingProducts ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
               {Array.from({ length: 8 }).map((_, index) => (
                 <div key={index} className="space-y-3">
-                  <div className="aspect-[3/4] rounded-lg bg-gray-100 animate-pulse" />
+                  <div className="aspect-[3/4] rounded-md bg-gray-100 animate-pulse" />
                   <div className="h-4 w-3/4 rounded bg-gray-100 animate-pulse" />
                   <div className="h-4 w-1/2 rounded bg-gray-100 animate-pulse" />
                 </div>
@@ -125,7 +125,7 @@ export function HomePage() {
               Chua co san pham phu hop.
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-5 gap-y-8">
               {products.map((product) => (
                 <ProductCard
                   key={product.productId || product.id}

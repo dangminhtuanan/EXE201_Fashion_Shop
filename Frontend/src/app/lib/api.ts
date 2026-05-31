@@ -314,6 +314,20 @@ interface OrderResponse extends MessageResponse {
   order: Order;
 }
 
+interface PayOSCheckoutResponse extends MessageResponse {
+  checkoutUrl: string;
+  orderCode: number;
+  orderId: string;
+}
+
+interface PaymentStatusResponse extends MessageResponse {
+  orderCode: number;
+  paymentStatus: string;
+  orderStatus?: string;
+  amount: number;
+  orderId?: string;
+}
+
 interface ReviewsResponse extends MessageResponse {
   reviews: Review[];
 }
@@ -329,6 +343,11 @@ interface RecommendationResponse extends MessageResponse {
 interface ChatResponse extends MessageResponse {
   answer: string;
   products: ApiProduct[];
+}
+
+interface UploadImageResponse extends MessageResponse {
+  url: string;
+  public_id: string;
 }
 
 interface ProductListParams {
@@ -355,10 +374,11 @@ interface CartItemPayload {
 interface CreateOrderPayload {
   items?: CartItemPayload[];
   customerName: string;
+  email?: string;
   phone: string;
   address: string;
   note?: string;
-  paymentProvider?: "cod" | "momo" | "vnpay" | "bank_transfer" | "stripe" | "paypal";
+  paymentProvider?: "cod" | "momo" | "vnpay" | "bank_transfer" | "stripe" | "paypal" | "PAYOS";
 }
 
 interface CreateReviewPayload {
@@ -636,6 +656,18 @@ export const productsApi = {
   },
 };
 
+export const uploadApi = {
+  uploadImage(file: File) {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    return request<UploadImageResponse>("/upload", {
+      method: "POST",
+      body: formData,
+    });
+  },
+};
+
 export const cartApi = {
   async get() {
     const response = await request<CartResponse>("/cart", {
@@ -702,6 +734,16 @@ export const ordersApi = {
       auth: true,
       body: payload,
     });
+  },
+  createPayOSCheckout(payload: Omit<CreateOrderPayload, "items" | "paymentProvider">) {
+    return request<PayOSCheckoutResponse>("/orders/checkout", {
+      method: "POST",
+      auth: true,
+      body: payload,
+    });
+  },
+  getPaymentStatus(orderCode: number | string) {
+    return request<PaymentStatusResponse>(`/orders/payment-status/${orderCode}`);
   },
   getMy() {
     return request<OrdersResponse>("/orders/my", {

@@ -1,18 +1,29 @@
 const express = require("express");
-const router = express.Router();
-const { uploadImage } = require("../controllers/uploadController");
-const authMiddleware = require("../middleware/authMiddleware");
-
-// Cấu hình Multer (RAM Storage)
 const multer = require("multer");
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const { uploadImage } = require("../controllers/uploadController");
+
+const router = express.Router();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      cb(new Error("Only image files are allowed"));
+      return;
+    }
+
+    cb(null, true);
+  },
+});
 
 /**
  * @swagger
  * /upload:
  *   post:
- *     summary: Tải hình ảnh lên Cloudinary
+ *     summary: Upload image to Cloudinary
  *     tags: [Upload]
  *     requestBody:
  *       required: true
@@ -24,27 +35,22 @@ const upload = multer({ storage: storage });
  *               image:
  *                 type: string
  *                 format: binary
- *                 description: File ảnh cần upload (Hỗ trợ png, jpg, jpeg)
  *     responses:
  *       200:
- *         description: Tải lên thành công, trả về URL của ảnh
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Upload thành công
- *                 url:
- *                   type: string
- *                 public_id:
- *                   type: string
+ *         description: Upload successfully
  *       400:
- *         description: Thiếu file ảnh hoặc định dạng file không hợp lệ
+ *         description: Missing image file or invalid file
  *       500:
- *         description: Lỗi kết nối Cloudinary hoặc lỗi hệ thống
+ *         description: Cloudinary or server error
  */
-router.post("/", upload.single("image"), uploadImage);
+router.post("/", (req, res, next) => {
+  upload.single("image")(req, res, (error) => {
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    return uploadImage(req, res, next);
+  });
+});
 
 module.exports = router;
