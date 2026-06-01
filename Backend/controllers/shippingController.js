@@ -1,11 +1,44 @@
 const Shipping = require("../models/Shipping");
 const Order = require("../models/Order");
 const User = require("../models/User");
+const { isStaffRole } = require("../middleware/roleMiddleware");
+
+function canAccessShipping(req, shipping) {
+  const order = shipping.order;
+  const orderUser = order?.user?._id || order?.user;
+  const shipper = shipping.shipper?._id || shipping.shipper;
+
+  return (
+    isStaffRole(req.user?.role) ||
+    (orderUser && String(orderUser) === String(req.user.id)) ||
+    (shipper && String(shipper) === String(req.user.id))
+  );
+}
+
+function canCreateShippingForOrder(order) {
+  const allowedOrderStatuses = ["confirmed", "packing", "PAID"];
+  const blockedOrderStatuses = ["pending", "PENDING_PAYMENT", "FAILED", "CANCELLED", "cancelled", "refunded", "completed"];
+
+  if (blockedOrderStatuses.includes(order.status)) {
+    return false;
+  }
+
+  if (allowedOrderStatuses.includes(order.status)) {
+    return order.paymentStatus === "paid" || order.paymentStatus === "pending" || order.paymentStatus === "unpaid";
+  }
+
+  return false;
+}
 
 // Get all shipping records (admin/manager only)
 exports.getAllShippings = async (req, res) => {
   try {
-    const shippings = await Shipping.find()
+    const filter = {};
+    if (req.query.status) {
+      filter.shippingStatus = req.query.status;
+    }
+
+    const shippings = await Shipping.find(filter)
       .populate("order")
       .populate("shipper", "username email phone")
       .sort({ createdAt: -1 });
@@ -39,6 +72,13 @@ exports.getShippingByOrderId = async (req, res) => {
       });
     }
 
+    if (!canAccessShipping(req, shipping)) {
+      return res.status(403).json({
+        success: false,
+        message: "Permission denied",
+      });
+    }
+
     res.json({
       success: true,
       data: shipping,
@@ -69,6 +109,13 @@ exports.createShipping = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Order not found",
+      });
+    }
+
+    if (!canCreateShippingForOrder(order)) {
+      return res.status(400).json({
+        success: false,
+        message: "Order is not ready for shipping",
       });
     }
 
@@ -115,9 +162,11 @@ exports.createShipping = async (req, res) => {
 
     const shipping = await Shipping.create(shippingData);
 
-    // Update order with shipping reference
+    // Update order with shipping reference, but keep it in packing until the shipper picks it up.
     order.shipping = shipping._id;
-    order.status = "shipping";
+    if (order.status === "confirmed" || order.status === "PAID") {
+      order.status = "packing";
+    }
     await order.save();
 
     const populatedShipping = await Shipping.findById(shipping._id)
@@ -150,6 +199,13 @@ exports.assignShipper = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Shipping not found",
+      });
+    }
+
+    if (!canAccessShipping(req, shipping)) {
+      return res.status(403).json({
+        success: false,
+        message: "Permission denied",
       });
     }
 
@@ -222,6 +278,13 @@ exports.updateShippingStatus = async (req, res) => {
       });
     }
 
+    if (!canAccessShipping(req, shipping)) {
+      return res.status(403).json({
+        success: false,
+        message: "Permission denied",
+      });
+    }
+
     // Update shipping status
     shipping.shippingStatus = status;
     if (status === "picked_up" && !shipping.pickupTime) {
@@ -247,7 +310,7 @@ exports.updateShippingStatus = async (req, res) => {
       if (status === "delivered") {
         order.status = "completed";
       } else if (status === "failed" || status === "returned") {
-        order.status = "cancelled";
+        order.status = status === "failed" ? "delivery_failed" : "returned";
       } else if (status === "picked_up" || status === "in_transit" || status === "out_for_delivery") {
         order.status = "shipping";
       }
@@ -288,6 +351,13 @@ exports.getShippingHistory = async (req, res) => {
       });
     }
 
+    if (!canAccessShipping(req, shipping)) {
+      return res.status(403).json({
+        success: false,
+        message: "Permission denied",
+      });
+    }
+
     res.json({
       success: true,
       data: {
@@ -309,6 +379,13 @@ exports.getShipperShipments = async (req, res) => {
   try {
     const { shipperId } = req.params;
     const { status } = req.query;
+
+    if (req.user.role === "shipper" && String(req.user.id) !== String(shipperId)) {
+      return res.status(403).json({
+        success: false,
+        message: "Permission denied",
+      });
+    }
 
     let filter = { shipper: shipperId };
     if (status) {
@@ -425,6 +502,13 @@ exports.getShipperStatistics = async (req, res) => {
   try {
     const { shipperId } = req.params;
 
+    if (req.user.role === "shipper" && String(req.user.id) !== String(shipperId)) {
+      return res.status(403).json({
+        success: false,
+        message: "Permission denied",
+      });
+    }
+
     const shipper = await User.findById(shipperId);
     if (!shipper || shipper.role !== "shipper") {
       return res.status(404).json({
@@ -468,6 +552,13 @@ exports.cancelShipping = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Shipping not found",
+      });
+    }
+
+    if (!canAccessShipping(req, shipping)) {
+      return res.status(403).json({
+        success: false,
+        message: "Permission denied",
       });
     }
 

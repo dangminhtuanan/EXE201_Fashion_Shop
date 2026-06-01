@@ -1,6 +1,22 @@
 const Order = require("../models/Order");
 const Payment = require("../models/Payment");
+const Product = require("../models/Product");
 const { getPayOSClient } = require("../config/payos");
+
+async function restoreOrderStock(order) {
+  for (const item of order.items) {
+    const product = await Product.findById(item.product);
+    if (product) {
+      await product.updateStock(item.quantity, "increase");
+    }
+  }
+}
+
+function moveOrderAfterPaid(order) {
+  if (["PENDING_PAYMENT", "pending", "PAID"].includes(order.status)) {
+    order.status = "confirmed";
+  }
+}
 
 exports.handlePayOSWebhook = async (req, res) => {
   let webhookData;
@@ -45,7 +61,12 @@ exports.handlePayOSWebhook = async (req, res) => {
 
     const order = await Order.findById(payment.order);
     if (order) {
-      order.status = isSuccessful ? "PAID" : "FAILED";
+      if (isSuccessful) {
+        moveOrderAfterPaid(order);
+      } else if (!["cancelled", "refunded", "completed"].includes(order.status)) {
+        await restoreOrderStock(order);
+        order.status = "cancelled";
+      }
       order.paymentStatus = isSuccessful ? "paid" : "failed";
       await order.save();
     }

@@ -15,7 +15,7 @@ const shippingSchema = new mongoose.Schema(
     },
     shippingStatus: {
       type: String,
-      enum: ["pending", "picked_up", "in_transit", "out_for_delivery", "delivered", "failed", "returned"],
+      enum: ["pending", "picked_up", "in_transit", "out_for_delivery", "delivered", "failed", "returned", "cancelled"],
       default: "pending",
     },
     trackingNumber: {

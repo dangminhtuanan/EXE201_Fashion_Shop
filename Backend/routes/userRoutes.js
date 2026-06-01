@@ -4,12 +4,17 @@ const authMiddleware = require("../middleware/authMiddleware");
 const router = express.Router();
 
 // Middleware kiểm tra quyền admin
+function managerOrAdmin(req, res, next) {
+  if (req.user && ["admin", "manager"].includes(req.user.role)) return next();
+  return res.status(403).json({ message: "Permission denied" });
+}
+
 function adminOnly(req, res, next) {
   if (req.user && req.user.role === "admin") return next();
   return res.status(403).json({ message: "Chỉ admin mới được phép!" });
 }
 
-router.use(authMiddleware, adminOnly);
+router.use(authMiddleware);
 
 /**
  * @swagger
@@ -30,7 +35,7 @@ router.use(authMiddleware, adminOnly);
  *       200:
  *         description: Danh sách user
  */
-router.get("/", getAllUsers);
+router.get("/", managerOrAdmin, getAllUsers);
 
 /**
  * @swagger
@@ -50,7 +55,7 @@ router.get("/", getAllUsers);
  *       200:
  *         description: Thông tin user
  */
-router.get("/:id", getUserById);
+router.get("/:id", managerOrAdmin, getUserById);
 
 /**
  * @swagger
@@ -85,7 +90,7 @@ router.get("/:id", getUserById);
  *       201:
  *         description: User đã được tạo
  */
-router.post("/", createUser);
+router.post("/", adminOnly, createUser);
 
 /**
  * @swagger
@@ -119,7 +124,7 @@ router.post("/", createUser);
  *       200:
  *         description: User đã được cập nhật
  */
-router.put("/:id", updateUser);
+router.put("/:id", adminOnly, updateUser);
 
 /**
  * @swagger
@@ -139,6 +144,6 @@ router.put("/:id", updateUser);
  *       200:
  *         description: User đã bị xóa
  */
-router.delete("/:id", deleteUser);
+router.delete("/:id", adminOnly, deleteUser);
 
 module.exports = router;

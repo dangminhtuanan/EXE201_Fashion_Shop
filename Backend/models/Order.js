@@ -92,6 +92,8 @@ const orderSchema = new mongoose.Schema(
         "completed",
         "cancelled",
         "refunded",
+        "delivery_failed",
+        "returned",
         "PENDING_PAYMENT",
         "PAID",
         "CANCELLED",

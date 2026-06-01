@@ -90,6 +90,8 @@ export interface Order {
     | "completed"
     | "cancelled"
     | "refunded"
+    | "delivery_failed"
+    | "returned"
     | "PENDING_PAYMENT"
     | "PAID"
     | "CANCELLED"
@@ -97,6 +99,46 @@ export interface Order {
   totalAmount: number;
   paymentStatus: "unpaid" | "pending" | "paid" | "failed" | "refunded";
   payment?: unknown;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ShippingStatus =
+  | "pending"
+  | "picked_up"
+  | "in_transit"
+  | "out_for_delivery"
+  | "delivered"
+  | "failed"
+  | "returned"
+  | "cancelled";
+
+export interface ShippingUpdate {
+  status: string;
+  timestamp?: string;
+  location?: string;
+  notes?: string;
+}
+
+export interface ShippingRecord {
+  _id: string;
+  order: Order;
+  shipper?: Pick<UserProfile, "_id" | "username" | "email" | "phone"> | null;
+  shippingStatus: ShippingStatus;
+  trackingNumber: string;
+  shippingMethod: "standard" | "express" | "overnight";
+  estimatedDelivery?: string | null;
+  actualDelivery?: string | null;
+  pickupTime?: string | null;
+  notes?: string;
+  shippingAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  updates: ShippingUpdate[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -110,7 +152,7 @@ export interface Avatar {
   uploadedAt?: string;
 }
 
-export type UserRole = "user" | "admin" | "manager" | "staff";
+export type UserRole = "user" | "customer" | "admin" | "manager" | "staff" | "shipper";
 
 export interface UserProfile {
   _id: string;

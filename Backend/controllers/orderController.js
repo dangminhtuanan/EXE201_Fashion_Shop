@@ -73,6 +73,12 @@ function calculateCheckoutTotals(orderItems) {
   };
 }
 
+function moveOrderAfterPaid(order) {
+  if (["PENDING_PAYMENT", "pending", "PAID"].includes(order.status)) {
+    order.status = "confirmed";
+  }
+}
+
 function generatePayOSOrderCode() {
   return Number(`${Date.now()}${Math.floor(Math.random() * 90 + 10)}`);
 }
@@ -137,7 +143,7 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: "Customer name, phone and address are required" });
     }
 
-    const totalAmount = orderItems.reduce((total, item) => total + item.subtotal, 0);
+    const totals = calculateCheckoutTotals(orderItems);
     const order = await Order.create({
       user: req.user.id,
       items: orderItems,
@@ -145,7 +151,10 @@ exports.createOrder = async (req, res) => {
       phone,
       address,
       note: req.body.note || "",
-      totalAmount,
+      subtotal: totals.subtotal,
+      tax: totals.tax,
+      shippingFee: totals.shippingFee,
+      totalAmount: totals.totalAmount,
       paymentStatus: "pending",
     });
 
@@ -158,7 +167,7 @@ exports.createOrder = async (req, res) => {
       order: order._id,
       user: req.user.id,
       provider: paymentProvider,
-      amount: totalAmount,
+      amount: totals.totalAmount,
       status: "pending",
     });
 
@@ -316,7 +325,7 @@ exports.getPaymentStatusByOrderCode = async (req, res) => {
           await payment.save();
 
           if (payment.order) {
-            payment.order.status = "PAID";
+            moveOrderAfterPaid(payment.order);
             payment.order.paymentStatus = "paid";
             await payment.order.save();
           }
@@ -326,7 +335,10 @@ exports.getPaymentStatusByOrderCode = async (req, res) => {
           await payment.save();
 
           if (payment.order) {
-            payment.order.status = payment.status;
+            if (!["cancelled", "refunded", "completed"].includes(payment.order.status)) {
+              await restoreOrderStock(payment.order);
+            }
+            payment.order.status = "cancelled";
             payment.order.paymentStatus = "failed";
             await payment.order.save();
           }

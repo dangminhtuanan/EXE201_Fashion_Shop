@@ -8,9 +8,17 @@ function canAccessPayment(req, payment) {
 
 function mapPaymentStatusToOrder(status) {
   if (status === "paid") return "paid";
+  if (status === "PAID") return "paid";
   if (status === "failed") return "failed";
+  if (status === "FAILED" || status === "CANCELLED") return "failed";
   if (status === "refunded") return "refunded";
   return "pending";
+}
+
+function moveOrderAfterPaid(order) {
+  if (["pending", "PENDING_PAYMENT", "PAID"].includes(order.status)) {
+    order.status = "confirmed";
+  }
 }
 
 exports.createPayment = async (req, res) => {
@@ -117,6 +125,9 @@ exports.updatePaymentStatus = async (req, res) => {
     const order = await Order.findById(payment.order);
     if (order) {
       order.paymentStatus = mapPaymentStatusToOrder(payment.status);
+      if (order.paymentStatus === "paid") {
+        moveOrderAfterPaid(order);
+      }
       await order.save();
     }
 

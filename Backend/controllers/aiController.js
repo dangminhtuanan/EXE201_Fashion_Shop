@@ -365,6 +365,19 @@ function summarizeProducts(products) {
     .join("\n");
 }
 
+function buildFallbackAnswer(products, question) {
+  if (!products.length) {
+    return "Mình chưa tìm thấy sản phẩm phù hợp trong cửa hàng. Bạn có thể nói rõ hơn về kiểu áo, màu sắc, size hoặc dịp mặc để mình gợi ý chính xác hơn.";
+  }
+
+  const productNames = products.slice(0, 2).map((product) => product.name).join(" và ");
+  const hasSpecificQuestion = getSearchTokens(question).length > 0;
+
+  return hasSpecificQuestion
+    ? `Mình gợi ý ${productNames} vì phù hợp nhất với nhu cầu bạn vừa nhập. Bạn có thể xem các sản phẩm bên dưới để chọn màu, size và mức giá phù hợp.`
+    : `Mình gợi ý ${productNames} trong các sản phẩm nổi bật hiện có. Bạn có thể nói thêm về phong cách, màu sắc hoặc ngân sách để mình lọc kỹ hơn.`;
+}
+
 function extractGeminiText(data) {
   const parts = data?.candidates?.[0]?.content?.parts || [];
   const text = parts
@@ -518,7 +531,17 @@ exports.chatWithGemini = async (req, res) => {
       productContext,
     ].join("\n");
 
-    const geminiResult = await callGemini(prompt);
+    let geminiResult;
+    try {
+      geminiResult = await callGemini(prompt);
+    } catch (error) {
+      geminiResult = {
+        answer: buildFallbackAnswer(products, question),
+        model: "local-fallback",
+        providerError: error.message,
+      };
+    }
+
     const answer = geminiResult.answer;
 
     await ChatbotLog.create({

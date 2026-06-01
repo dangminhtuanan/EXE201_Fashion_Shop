@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
+import type { UserRole } from "../types";
 
 function FullPageLoader() {
   return (
@@ -24,7 +25,15 @@ export function GuestOnlyRoute() {
   if (isAuthenticated) {
     return (
       <Navigate
-        to={user?.role === "admin" ? "/admin" : "/profile"}
+        to={
+          user?.role === "admin"
+            ? "/admin"
+            : user?.role === "manager"
+              ? "/manager"
+              : user?.role === "shipper"
+                ? "/shipper"
+                : "/"
+        }
         replace
       />
     );
@@ -66,6 +75,24 @@ export function RequireAdmin() {
   }
 
   if (user?.role !== "admin") {
+    return <Navigate to="/profile" replace />;
+  }
+
+  return <Outlet />;
+}
+
+export function RequireRoles({ roles }: { roles: UserRole[] }) {
+  const { isAuthenticated, isHydrating, user } = useAuth();
+
+  if (isHydrating) {
+    return <FullPageLoader />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user || !roles.includes(user.role)) {
     return <Navigate to="/profile" replace />;
   }
 

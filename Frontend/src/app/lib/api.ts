@@ -19,6 +19,8 @@ import type {
   RegisterPayload,
   Review,
   ResetPasswordPayload,
+  ShippingRecord,
+  ShippingStatus,
   UpdateProfilePayload,
   UpdateUserPayload,
   UserProfile,
@@ -218,6 +220,30 @@ async function request<T>(
   }
 }
 
+async function optionalAuthRequest<T>(
+  path: string,
+  options: Omit<RequestOptions, "auth"> = {},
+) {
+  const hasAccessToken = Boolean(getStoredAuthSession()?.accessToken);
+
+  try {
+    return await request<T>(path, {
+      ...options,
+      auth: hasAccessToken,
+    });
+  } catch (error) {
+    if (error instanceof ApiError && hasAccessToken && (error.status === 401 || error.status === 403)) {
+      return request<T>(path, {
+        ...options,
+        auth: false,
+        retryOnUnauthorized: false,
+      });
+    }
+
+    throw error;
+  }
+}
+
 interface MessageResponse {
   message: string;
 }
@@ -328,6 +354,17 @@ interface PaymentStatusResponse extends MessageResponse {
   orderId?: string;
 }
 
+interface ShippingListResponse {
+  success: boolean;
+  data: ShippingRecord[];
+}
+
+interface ShippingResponse {
+  success: boolean;
+  message?: string;
+  data: ShippingRecord;
+}
+
 interface ReviewsResponse extends MessageResponse {
   reviews: Review[];
 }
@@ -371,6 +408,26 @@ interface ProductListParams {
   inStock?: boolean;
   sort?: "price_asc" | "price_desc" | "rating" | "sold" | "newest";
 }
+
+interface CreateProductPayload {
+  name: string;
+  category: string;
+  description?: string;
+  price: number;
+  originalPrice?: number;
+  images?: string[];
+  brand?: string;
+  material?: string;
+  gender?: Product["gender"];
+  sizes?: string[];
+  colors?: string[];
+  stock?: number;
+  isFeatured?: boolean;
+}
+
+type UpdateProductPayload = Partial<CreateProductPayload> & {
+  isActive?: boolean;
+};
 
 interface CartItemPayload {
   productId: string;
@@ -670,6 +727,36 @@ export const productsApi = {
       product: normalizeProduct(response.product),
     };
   },
+  async create(payload: CreateProductPayload) {
+    const response = await request<ProductResponse>("/products", {
+      method: "POST",
+      auth: true,
+      body: payload,
+    });
+
+    return {
+      ...response,
+      product: normalizeProduct(response.product),
+    };
+  },
+  async update(id: string, payload: UpdateProductPayload) {
+    const response = await request<ProductResponse>(`/products/${id}`, {
+      method: "PUT",
+      auth: true,
+      body: payload,
+    });
+
+    return {
+      ...response,
+      product: normalizeProduct(response.product),
+    };
+  },
+  remove(id: string) {
+    return request<MessageResponse>(`/products/${id}`, {
+      method: "DELETE",
+      auth: true,
+    });
+  },
 };
 
 export const uploadApi = {
@@ -766,15 +853,63 @@ export const ordersApi = {
       auth: true,
     });
   },
+  getAll(params: { status?: Order["status"]; paymentStatus?: Order["paymentStatus"] } = {}) {
+    return request<OrdersResponse>("/orders", {
+      auth: true,
+      params,
+    });
+  },
   getById(id: string) {
     return request<OrderResponse>(`/orders/${id}`, {
       auth: true,
+    });
+  },
+  updateStatus(
+    id: string,
+    payload: { status?: Order["status"]; paymentStatus?: Order["paymentStatus"] },
+  ) {
+    return request<OrderResponse>(`/orders/${id}/status`, {
+      method: "PATCH",
+      auth: true,
+      body: payload,
     });
   },
   cancel(id: string) {
     return request<OrderResponse>(`/orders/${id}/cancel`, {
       method: "PATCH",
       auth: true,
+    });
+  },
+};
+
+export const shippingApi = {
+  getAll(status?: ShippingStatus) {
+    return request<ShippingListResponse>("/shipping", {
+      auth: true,
+      params: status ? { status } : undefined,
+    });
+  },
+  getMyShipments(status?: ShippingStatus) {
+    return request<ShippingListResponse>("/shipping/my/shipments", {
+      auth: true,
+      params: status ? { status } : undefined,
+    });
+  },
+  updateStatus(
+    shippingId: string,
+    payload: { status: ShippingStatus; location?: string; notes?: string },
+  ) {
+    return request<ShippingResponse>(`/shipping/${shippingId}/status`, {
+      method: "PUT",
+      auth: true,
+      body: payload,
+    });
+  },
+  cancel(shippingId: string, reason: string) {
+    return request<ShippingResponse>(`/shipping/${shippingId}/cancel`, {
+      method: "PUT",
+      auth: true,
+      body: { reason },
     });
   },
 };
@@ -794,9 +929,8 @@ export const reviewsApi = {
 
 export const aiApi = {
   async chat(payload: ChatPayload) {
-    const response = await request<ChatResponse>("/ai/chat", {
+    const response = await optionalAuthRequest<ChatResponse>("/ai/chat", {
       method: "POST",
-      auth: true,
       body: payload,
     });
 
@@ -806,8 +940,7 @@ export const aiApi = {
     };
   },
   async getRecommendations(params: RecommendationParams = {}) {
-    const response = await request<RecommendationResponse>("/ai/recommendations", {
-      auth: true,
+    const response = await optionalAuthRequest<RecommendationResponse>("/ai/recommendations", {
       params,
     });
 
@@ -823,16 +956,14 @@ export const aiApi = {
     keyword?: string;
     metadata?: Record<string, unknown>;
   }) {
-    return request<MessageResponse>("/ai/behavior-logs", {
+    return optionalAuthRequest<MessageResponse>("/ai/behavior-logs", {
       method: "POST",
-      auth: true,
       body: payload,
     });
   },
   createTryOn(payload: TryOnPayload) {
-    return request<TryOnResponse>("/ai/try-on", {
+    return optionalAuthRequest<TryOnResponse>("/ai/try-on", {
       method: "POST",
-      auth: true,
       body: payload,
     });
   },
@@ -842,9 +973,8 @@ export const aiApi = {
     intent?: string;
     metadata?: Record<string, unknown>;
   }) {
-    return request<MessageResponse>("/ai/chatbot-logs", {
+    return optionalAuthRequest<MessageResponse>("/ai/chatbot-logs", {
       method: "POST",
-      auth: true,
       body: payload,
     });
   },

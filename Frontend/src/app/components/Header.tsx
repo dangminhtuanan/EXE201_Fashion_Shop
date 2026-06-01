@@ -1,25 +1,36 @@
-import {
-  ShoppingBag,
-  Search,
-  Menu,
-  Heart,
-  User,
-  Shield,
-  LogOut,
-} from "lucide-react";
-import { Button } from "./ui/button";
+import { LogOut, Menu, Search, ShoppingBag, User } from "lucide-react";
 import { Link, useNavigate } from "react-router";
-import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
+import { Button } from "./ui/button";
+import { useAuth } from "../contexts/AuthContext";
 
 interface HeaderProps {
   cartCount: number;
   onCartClick: () => void;
 }
 
+const navItems = [
+  { label: "TRANG CHỦ", href: "/" },
+  { label: "SẢN PHẨM", href: "/" },
+  { label: "NEW ARRIVAL", href: "/" },
+  { label: "BEST SELLER", href: "/" },
+  { label: "SALE", href: "/" },
+  { label: "BLOG", href: "/" },
+  { label: "LIÊN HỆ", href: "/" },
+];
+
 export function Header({ cartCount }: HeaderProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
+  const accountPath = !isAuthenticated
+    ? "/login"
+    : user?.role === "admin"
+      ? "/admin"
+      : user?.role === "manager"
+        ? "/manager"
+      : user?.role === "shipper"
+        ? "/shipper"
+        : "/profile";
 
   const handleLogout = () => {
     logout();
@@ -28,99 +39,106 @@ export function Header({ cartCount }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <Button variant="ghost" size="icon" className="md:hidden">
-            <Menu className="h-5 w-5" />
+    <header className="sticky top-0 z-50 border-t-4 border-pink-100 bg-white shadow-sm">
+      <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
+        <div className="flex w-44 items-center">
+          <Button variant="ghost" size="icon" className="mr-2 md:hidden">
+            <Menu className="h-5 w-5 text-[#8b5d7c]" />
           </Button>
 
-          <div className="flex-1 md:flex-none">
-            <Link to="/">
-              <h1 className="text-2xl font-bold tracking-tight">OUTFIO</h1>
-            </Link>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-8 flex-1 justify-center">
-            <a href="#" className="text-sm hover:opacity-70 transition-opacity">
-              Nữ
-            </a>
-            <a href="#" className="text-sm hover:opacity-70 transition-opacity">
-              Nam
-            </a>
-            <a href="#" className="text-sm hover:opacity-70 transition-opacity">
-              Phụ Kiện
-            </a>
-            <a href="#" className="text-sm hover:opacity-70 transition-opacity">
-              Sale
-            </a>
-            <a href="#" className="text-sm hover:opacity-70 transition-opacity">
-              Bộ Sưu Tập
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="hidden md:flex">
-              <Search className="h-5 w-5" />
-            </Button>
-
-            <Button variant="ghost" size="icon" className="hidden md:flex">
-              <Heart className="h-5 w-5" />
-            </Button>
-
-            {isAuthenticated ? (
-              <>
-                {user?.role === "admin" && (
-                  <Link to="/admin" className="hidden md:block">
-                    <Button variant="ghost" className="gap-2">
-                      <Shield className="h-4 w-4" />
-                      Admin
-                    </Button>
-                  </Link>
-                )}
-
-                <Link to="/profile">
-                  <Button variant="ghost" className="gap-2 hidden md:flex">
-                    <User className="h-5 w-5" />
-                    <span className="max-w-28 truncate">{user?.username}</span>
-                  </Button>
-                </Link>
-
-                <Button
-                  variant="ghost"
-                  className="gap-2 hidden md:flex"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Đăng xuất
-                </Button>
-
-                <Link to="/profile" className="md:hidden">
-                  <Button variant="ghost" size="icon">
-                    <User className="h-5 w-5" />
-                  </Button>
-                </Link>
-              </>
-            ) : (
-              <Link to="/login">
-                <Button variant="ghost" size="icon" className="hidden md:flex">
-                  <User className="h-5 w-5" />
-                </Button>
-              </Link>
-            )}
-
-            <Link to="/cart">
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingBag className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
-          </div>
+          <Link to="/" className="inline-flex flex-col leading-none">
+            <span className="text-2xl font-bold tracking-tight text-pink-500">
+              OUTFIO
+            </span>
+            <span className="mt-1 text-[9px] uppercase tracking-[0.25em] text-pink-300">
+              Fashion Store
+            </span>
+          </Link>
         </div>
+
+        <nav className="hidden flex-1 items-center justify-center gap-7 md:flex">
+          {navItems.map((item) => (
+            <Link
+              key={item.label}
+              to={item.href}
+              className="text-[11px] font-semibold uppercase text-[#8b5d7c] transition-colors hover:text-pink-500"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="ml-auto flex w-44 items-center justify-end gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden h-9 w-9 text-[#8b5d7c] hover:text-pink-500 md:inline-flex"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+
+          <Link to={accountPath}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-[#8b5d7c] hover:text-pink-500"
+            >
+              <User className="h-4 w-4" />
+            </Button>
+          </Link>
+
+          {isAuthenticated && (
+            <Button
+              variant="ghost"
+              className="hidden h-9 px-2 text-[#8b5d7c] hover:text-pink-500 sm:inline-flex"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden lg:inline">Đăng xuất</span>
+            </Button>
+          )}
+
+          <Link to="/cart">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-9 w-9 text-[#8b5d7c] hover:text-pink-500"
+            >
+              <ShoppingBag className="h-4 w-4" />
+              {cartCount > 0 && (
+                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-semibold leading-none text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Button>
+          </Link>
+
+          {isAuthenticated && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-[#8b5d7c] hover:text-pink-500 sm:hidden"
+              onClick={handleLogout}
+              title="Đăng xuất"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="border-t border-pink-50 md:hidden">
+        <nav className="mx-auto flex max-w-7xl gap-5 overflow-x-auto px-4 py-3">
+          {navItems.map((item) => (
+            <Link
+              key={item.label}
+              to={item.href}
+              className="shrink-0 text-[11px] font-semibold uppercase text-[#8b5d7c]"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
       </div>
     </header>
   );

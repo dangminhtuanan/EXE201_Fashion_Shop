@@ -40,9 +40,16 @@ export function LoginPage() {
         return;
       }
 
-      navigate(session.profile.role === "admin" ? "/admin" : "/profile", {
-        replace: true,
-      });
+      navigate(
+        session.profile.role === "admin"
+          ? "/admin"
+          : session.profile.role === "shipper"
+            ? "/shipper"
+            : "/",
+        {
+          replace: true,
+        },
+      );
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {

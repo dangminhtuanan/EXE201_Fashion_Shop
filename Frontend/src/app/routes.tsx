@@ -9,10 +9,12 @@ import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderSuccessPage } from './pages/OrderSuccessPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { ManagerDashboardPage } from './pages/ManagerDashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { PaymentResultPage } from './pages/PaymentResultPage';
-import { GuestOnlyRoute, RequireAdmin, RequireAuth } from './components/RouteGuards';
+import { ShipperDashboardPage } from './pages/ShipperDashboardPage';
+import { GuestOnlyRoute, RequireAdmin, RequireAuth, RequireRoles } from './components/RouteGuards';
 
 export const router = createBrowserRouter([
   {
@@ -85,6 +87,24 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         Component: AdminDashboardPage,
+      },
+    ],
+  },
+  {
+    Component: () => <RequireRoles roles={['manager']} />,
+    children: [
+      {
+        path: 'manager',
+        Component: ManagerDashboardPage,
+      },
+    ],
+  },
+  {
+    Component: () => <RequireRoles roles={['shipper', 'admin']} />,
+    children: [
+      {
+        path: 'shipper',
+        Component: ShipperDashboardPage,
       },
     ],
   },

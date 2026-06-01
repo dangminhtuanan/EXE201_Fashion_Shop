@@ -134,7 +134,7 @@ router.get("/my/shipments", shipperOnly, shippingController.getMyShipments);
  *       404:
  *         description: Vận chuyển không tìm thấy
  */
-router.get("/:shippingId/history", shippingController.getShippingHistory);
+router.get("/:shippingId/history", authMiddleware, shippingController.getShippingHistory);
 
 /**
  * @swagger
