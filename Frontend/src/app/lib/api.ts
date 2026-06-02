@@ -390,6 +390,32 @@ interface TryOnResponse extends MessageResponse {
   recommendation: unknown;
 }
 
+interface MixMatchTryOnResponse extends MessageResponse {
+  taskId: string;
+  status: string;
+  progress: number;
+  resultImageUrl?: string;
+  creditCost: number;
+  selectedType: "top" | "bottom";
+  targetType: "top" | "bottom";
+  selectedProduct: ApiProduct;
+  matchedProduct: ApiProduct;
+  outfit: {
+    top: ApiProduct;
+    bottom: ApiProduct;
+  };
+  steps?: unknown[];
+}
+
+interface NormalizedMixMatchTryOnResponse extends Omit<MixMatchTryOnResponse, "selectedProduct" | "matchedProduct" | "outfit"> {
+  selectedProduct: Product;
+  matchedProduct: Product;
+  outfit: {
+    top: Product;
+    bottom: Product;
+  };
+}
+
 interface UploadImageResponse extends MessageResponse {
   url: string;
   public_id: string;
@@ -469,6 +495,12 @@ interface TryOnPayload {
   clothingImageUrl?: string;
   productId?: string;
   clothType?: "upper" | "lower" | "full_set" | "combo";
+  hdMode?: boolean;
+}
+
+interface MixMatchTryOnPayload {
+  modelImageUrl: string;
+  productId: string;
   hdMode?: boolean;
 }
 
@@ -966,6 +998,22 @@ export const aiApi = {
       method: "POST",
       body: payload,
     });
+  },
+  async createMixMatchTryOn(payload: MixMatchTryOnPayload) {
+    const response = await optionalAuthRequest<MixMatchTryOnResponse>("/ai/mix-match/try-on", {
+      method: "POST",
+      body: payload,
+    });
+
+    return {
+      ...response,
+      selectedProduct: normalizeProduct(response.selectedProduct),
+      matchedProduct: normalizeProduct(response.matchedProduct),
+      outfit: {
+        top: normalizeProduct(response.outfit.top),
+        bottom: normalizeProduct(response.outfit.bottom),
+      },
+    } satisfies NormalizedMixMatchTryOnResponse;
   },
   createChatbotLog(payload: {
     question: string;

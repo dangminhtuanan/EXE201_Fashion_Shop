@@ -64,6 +64,55 @@ const MODEL_IMAGES = [
   modelWhiteOutfit,
 ];
 
+const MIX_MATCH_KEYWORDS = [
+  'ao',
+  'top',
+  'shirt',
+  'tshirt',
+  'tee',
+  'blouse',
+  'hoodie',
+  'sweater',
+  'jacket',
+  'coat',
+  'polo',
+  'somi',
+  'thun',
+  'khoac',
+  'quan',
+  'bottom',
+  'pants',
+  'trousers',
+  'jean',
+  'jeans',
+  'short',
+  'shorts',
+  'skirt',
+  'chanvay',
+  'legging',
+  'jogger',
+];
+
+function normalizeSearchText(value = '') {
+  return value
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase();
+}
+
+function canMixMatchProduct(product: Product) {
+  const text = normalizeSearchText(
+    [product.name, product.category, product.categorySlug, product.description].filter(Boolean).join(' ')
+  );
+  const compactText = text.replace(/\s+/g, '');
+  const words = new Set(text.split(/[^a-z0-9]+/).filter(Boolean));
+
+  return MIX_MATCH_KEYWORDS.some((keyword) => words.has(keyword) || compactText.includes(keyword));
+}
+
 const CLOTHING_CATEGORIES = [
   { name: 'Áo', icon: Shirt, items: 8 },
   { name: 'Quần', icon: Shirt, items: 12 },
@@ -221,10 +270,21 @@ export function UseAIPage() {
     [brokenImageUrls, products]
   );
 
+  const stylingProductChoices = useMemo(
+    () => productChoices.filter(canMixMatchProduct),
+    [productChoices]
+  );
+
   const modelChoices = useMemo(
     () => [...uploadedModelImages, ...MODEL_IMAGES],
     [uploadedModelImages]
   );
+
+  useEffect(() => {
+    if (stylingClothing !== null && stylingClothing >= stylingProductChoices.length) {
+      setStylingClothing(null);
+    }
+  }, [stylingClothing, stylingProductChoices.length]);
 
   const handleUploadModelImage = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -317,7 +377,7 @@ export function UseAIPage() {
       return;
     }
 
-    const selectedProduct = productChoices[stylingClothing];
+    const selectedProduct = stylingProductChoices[stylingClothing];
     const selectedModelImage = modelChoices[stylingModel];
 
     if (!selectedProduct || !selectedModelImage) {
@@ -331,11 +391,9 @@ export function UseAIPage() {
 
     setIsGeneratingStyling(true);
     try {
-      const response = await aiApi.createTryOn({
+      const response = await aiApi.createMixMatchTryOn({
         modelImageUrl: selectedModelImage,
-        clothingImageUrl: selectedProduct.image,
         productId: selectedProduct.productId,
-        clothType: 'upper',
         hdMode: highQuality,
       });
 
@@ -482,10 +540,10 @@ export function UseAIPage() {
                     {isLoadingProducts && (
                       <div className="text-xs text-gray-500 py-4">Dang tai san pham...</div>
                     )}
-                    {!isLoadingProducts && productChoices.length === 0 && (
-                      <div className="text-xs text-gray-500 py-4">Chua co san pham co anh trong API.</div>
+                    {!isLoadingProducts && stylingProductChoices.length === 0 && (
+                      <div className="text-xs text-gray-500 py-4">Chua co san pham ao/quan co anh trong API.</div>
                     )}
-                    {productChoices.map((product, i) => (
+                    {stylingProductChoices.map((product, i) => (
                       <button 
                         key={product.productId || product.id} 
                         onClick={() => setSelectedClothing(i)}
