@@ -88,7 +88,6 @@ const MIX_MATCH_KEYWORDS = [
   'short',
   'shorts',
   'skirt',
-  'chanvay',
   'legging',
   'jogger',
 ];
@@ -225,6 +224,7 @@ export function UseAIPage() {
   const [stylingModel, setStylingModel] = useState<number | null>(null);
   const [isGeneratingStyling, setIsGeneratingStyling] = useState(false);
   const [stylingResult, setStylingResult] = useState<string | null>(null);
+  const [stylingOutfit, setStylingOutfit] = useState<{ top?: Product; bottom?: Product } | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [uploadedModelImages, setUploadedModelImages] = useState<string[]>([]);
@@ -285,6 +285,12 @@ export function UseAIPage() {
       setStylingClothing(null);
     }
   }, [stylingClothing, stylingProductChoices.length]);
+
+  useEffect(() => {
+    if (selectedClothing !== null && selectedClothing >= productChoices.length) {
+      setSelectedClothing(null);
+    }
+  }, [productChoices.length, selectedClothing]);
 
   const handleUploadModelImage = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -403,6 +409,7 @@ export function UseAIPage() {
       }
 
       setStylingResult(response.resultImageUrl);
+      setStylingOutfit(response.outfit);
     } catch (error) {
       alert(getErrorMessage(error));
     } finally {
@@ -412,6 +419,7 @@ export function UseAIPage() {
 
   const handleResetStyling = () => {
     setStylingResult(null);
+    setStylingOutfit(null);
     setStylingClothing(null);
     setStylingModel(null);
   };
@@ -540,10 +548,10 @@ export function UseAIPage() {
                     {isLoadingProducts && (
                       <div className="text-xs text-gray-500 py-4">Dang tai san pham...</div>
                     )}
-                    {!isLoadingProducts && stylingProductChoices.length === 0 && (
-                      <div className="text-xs text-gray-500 py-4">Chua co san pham ao/quan co anh trong API.</div>
+                    {!isLoadingProducts && productChoices.length === 0 && (
+                      <div className="text-xs text-gray-500 py-4">Chua co san pham co anh trong API.</div>
                     )}
-                    {stylingProductChoices.map((product, i) => (
+                    {productChoices.map((product, i) => (
                       <button 
                         key={product.productId || product.id} 
                         onClick={() => setSelectedClothing(i)}
@@ -643,10 +651,10 @@ export function UseAIPage() {
                     {isLoadingProducts && (
                       <div className="text-xs text-gray-500 py-4">Dang tai san pham...</div>
                     )}
-                    {!isLoadingProducts && productChoices.length === 0 && (
-                      <div className="text-xs text-gray-500 py-4">Chua co san pham co anh trong API.</div>
+                    {!isLoadingProducts && stylingProductChoices.length === 0 && (
+                      <div className="text-xs text-gray-500 py-4">Chua co san pham ao/quan co anh trong API.</div>
                     )}
-                    {productChoices.map((product, i) => (
+                    {stylingProductChoices.map((product, i) => (
                       <button 
                         key={product.productId || product.id} 
                         onClick={() => setStylingClothing(i)}
@@ -1151,12 +1159,19 @@ export function UseAIPage() {
                   <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-gray-900 mb-2">Chi tiết outfit</h4>
                     <div className="flex flex-wrap gap-2">
-                      <span className="text-xs px-2 py-1 bg-[#20B29A]/10 text-[#20B29A] rounded-md font-medium">Áo thun ICDN</span>
-                      <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-medium">Chân váy midi</span>
-                      <span className="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded-md font-medium">Phụ kiện tối giản</span>
+                      {stylingOutfit?.top && (
+                        <span className="text-xs px-2 py-1 bg-[#20B29A]/10 text-[#20B29A] rounded-md font-medium">
+                          {stylingOutfit.top.name}
+                        </span>
+                      )}
+                      {stylingOutfit?.bottom && (
+                        <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-medium">
+                          {stylingOutfit.bottom.name}
+                        </span>
+                      )}
+                    </div>
                     </div>
                   </div>
-                </div>
 
                 {/* Action Buttons */}
                 <div className="p-4 md:p-6 bg-gray-50 border-t border-gray-100">

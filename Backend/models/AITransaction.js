@@ -77,6 +77,5 @@ const aiTransactionSchema = new mongoose.Schema(
 // Index for efficient queries
 aiTransactionSchema.index({ user: 1, createdAt: -1 });
 aiTransactionSchema.index({ status: 1 });
-aiTransactionSchema.index({ orderCode: 1 });
 
 module.exports = mongoose.model("AITransaction", aiTransactionSchema);
