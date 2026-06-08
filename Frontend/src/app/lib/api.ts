@@ -5,6 +5,8 @@ import {
   setStoredAuthSession,
 } from "./auth-storage";
 import type {
+  AIPackage,
+  AITransaction,
   AuthSession,
   CartItem,
   CartSummary,
@@ -352,6 +354,33 @@ interface PaymentStatusResponse extends MessageResponse {
   orderStatus?: string;
   amount: number;
   orderId?: string;
+}
+
+interface AIPackagesResponse extends MessageResponse {
+  packages: AIPackage[];
+}
+
+interface AICreditsBalanceResponse extends MessageResponse {
+  balance: number;
+  userId: string;
+}
+
+interface AITransactionsResponse extends MessageResponse {
+  transactions: AITransaction[];
+}
+
+interface AIPurchaseResponse extends MessageResponse {
+  transaction: {
+    id: string;
+    orderCode: number;
+    checkoutUrl: string;
+    amount: number;
+    packageName: string;
+  };
+}
+
+interface AITransactionResponse extends MessageResponse {
+  transaction: AITransaction;
 }
 
 interface ShippingListResponse {
@@ -911,6 +940,44 @@ export const ordersApi = {
       method: "PATCH",
       auth: true,
     });
+  },
+};
+
+export const aiPackageApi = {
+  getPackages() {
+    return request<AIPackagesResponse>("/ai-packages/packages");
+  },
+  getMyBalance() {
+    return request<AICreditsBalanceResponse>("/ai-packages/my/balance", {
+      auth: true,
+    });
+  },
+  getMyTransactions() {
+    return request<AITransactionsResponse>("/ai-packages/my/transactions", {
+      auth: true,
+    });
+  },
+  purchase(packageId: string) {
+    return request<AIPurchaseResponse>("/ai-packages/purchase", {
+      method: "POST",
+      auth: true,
+      body: { packageId },
+    });
+  },
+  getTransaction(transactionId: string) {
+    return request<AITransactionResponse>(`/ai-packages/transaction/${transactionId}`, {
+      auth: true,
+    });
+  },
+  useCredits(credits = 1) {
+    return request<MessageResponse & { creditsUsed: number; remainingBalance: number }>(
+      "/ai-packages/use-credits",
+      {
+        method: "POST",
+        auth: true,
+        body: { credits },
+      },
+    );
   },
 };
 

@@ -161,12 +161,56 @@ export interface UserProfile {
   phone: string;
   address: string;
   role: UserRole;
+  aiCredits?: number;
   createdAt?: string;
   updatedAt?: string;
   __v?: number;
   refreshToken?: string | null;
   isActive: boolean;
   avatar?: Avatar | null;
+}
+
+export interface AIPackage {
+  _id: string;
+  name: string;
+  description?: string;
+  price: number;
+  credits: number;
+  features: string[];
+  duration: "one-time" | "monthly" | "yearly";
+  active: boolean;
+  displayOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type AITransactionStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "cancelled"
+  | "PENDING"
+  | "PAID"
+  | "CANCELLED"
+  | "FAILED";
+
+export interface AITransaction {
+  _id: string;
+  user: string | Pick<UserProfile, "_id" | "username" | "email" | "phone">;
+  package: string | Pick<AIPackage, "_id" | "name" | "credits" | "price" | "features">;
+  amount: number;
+  credits: number;
+  provider: string;
+  orderCode?: number;
+  paymentLinkId?: string;
+  checkoutUrl?: string;
+  status: AITransactionStatus;
+  transactionNo?: string;
+  transactionReference?: string;
+  paidAt?: string | null;
+  expiresAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthSession {

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Coins, Sparkles } from "lucide-react";
+import { Link } from "react-router";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -12,7 +14,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Textarea } from "../components/ui/textarea";
-import { getErrorMessage, profileApi, resolveAssetUrl } from "../lib/api";
+import { aiPackageApi, getErrorMessage, profileApi, resolveAssetUrl } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -45,6 +47,8 @@ export function ProfilePage() {
     newOtp: "",
   });
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [aiCredits, setAiCredits] = useState<number | null>(null);
+  const [isAiBalanceLoading, setIsAiBalanceLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSendingPasswordOtp, setIsSendingPasswordOtp] = useState(false);
@@ -88,6 +92,34 @@ export function ProfilePage() {
     };
 
     void loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAiBalance = async () => {
+      try {
+        const response = await aiPackageApi.getMyBalance();
+
+        if (isMounted) {
+          setAiCredits(response.balance);
+        }
+      } catch (error) {
+        if (isMounted) {
+          toast.error(getErrorMessage(error));
+        }
+      } finally {
+        if (isMounted) {
+          setIsAiBalanceLoading(false);
+        }
+      }
+    };
+
+    void loadAiBalance();
 
     return () => {
       isMounted = false;
@@ -270,6 +302,32 @@ export function ProfilePage() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-gray-500">Cập nhật</span>
                   <span>{formatDate(user?.updatedAt)}</span>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-pink-100 bg-pink-50/60 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-pink-900">AI credits</p>
+                    <p className="text-xs text-pink-700">Dùng cho thử đồ và mix-match AI</p>
+                  </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-pink-600">
+                    <Coins className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-3xl font-bold text-pink-950">
+                      {isAiBalanceLoading ? "--" : aiCredits ?? 0}
+                    </p>
+                    <p className="text-xs text-pink-700">Số dư hiện tại</p>
+                  </div>
+                  <Link to="/ai-packages">
+                    <Button size="sm" className="bg-pink-600 text-white hover:bg-pink-700">
+                      <Sparkles className="h-4 w-4" />
+                      Mua gói
+                    </Button>
+                  </Link>
                 </div>
               </div>
 

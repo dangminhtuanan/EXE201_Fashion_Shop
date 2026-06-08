@@ -36,6 +36,7 @@ import {
   Share2,
   RotateCcw
 } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 // Import images from local assets
 import tshirtProduct from '@/assets/8a55393af5b2913bc9b718f78f6d9d7649ea15b6.png';
@@ -206,6 +207,7 @@ const SegmentedControl = ({ options, activeIndex, onChange }: { options: string[
 );
 
 export function UseAIPage() {
+  const navigate = useNavigate();
   const [mainMode, setMainMode] = useState(0); // 0: Thử đồ AI, 1: Phối đồ với AI
   const [clothesTab, setClothesTab] = useState(0);
   const [modelTab, setModelTab] = useState(0);
@@ -230,6 +232,11 @@ export function UseAIPage() {
   const [uploadedModelImages, setUploadedModelImages] = useState<string[]>([]);
   const [isUploadingModel, setIsUploadingModel] = useState(false);
   const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(() => new Set());
+
+  const navigateFromSidebar = (path: string) => {
+    setMobileMenuOpen(false);
+    navigate(path);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -476,14 +483,14 @@ export function UseAIPage() {
         </div>
 
         <div className="p-4 border-t border-gray-200 space-y-1">
-          <NavItem icon={UserCircle} label="Tài khoản của tôi" />
+          <NavItem icon={UserCircle} label="Tài khoản của tôi" onClick={() => navigateFromSidebar('/profile')} />
           <NavItem 
             icon={CreditCard} 
             label="Gói của tôi" 
-            onClick={() => setIsPlanModalOpen(true)}
+            onClick={() => navigateFromSidebar('/ai-packages')}
             badge={
               <span className="flex items-center gap-1 text-[10px] font-bold bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
-                199.000đ/tháng
+                Mua credit
               </span>
             } 
           />
