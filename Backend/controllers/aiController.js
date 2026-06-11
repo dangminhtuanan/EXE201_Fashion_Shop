@@ -3,6 +3,7 @@ const AIOutfitRecommendation = require("../models/AIOutfitRecommendation");
 const AIRecommendation = require("../models/AIRecommendation");
 const ChatbotLog = require("../models/ChatbotLog");
 const Product = require("../models/Product");
+const cloudinary = require("../config/cloudinary");
 const mongoose = require("mongoose");
 const fs = require("fs/promises");
 const path = require("path");
@@ -54,6 +55,13 @@ const MIX_MATCH_TYPES = {
     ],
   },
 };
+
+const hasCloudinaryConfig = () =>
+  Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+  );
 
 function escapeRegex(value) {
   return value.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -217,6 +225,26 @@ async function waitForFitroomResult(taskId, maxAttempts = 35, apiKey) {
   }
 
   return latestStatus;
+}
+
+async function persistGeneratedResultImage(imageUrl, taskId) {
+  if (!imageUrl || !hasCloudinaryConfig() || imageUrl.includes("res.cloudinary.com")) {
+    return imageUrl;
+  }
+
+  try {
+    const result = await cloudinary.uploader.upload(imageUrl, {
+      folder: "exe201_fashion_shop/ai_results",
+      public_id: taskId ? `fitroom_${taskId}` : undefined,
+      overwrite: true,
+      resource_type: "image",
+    });
+
+    return result.secure_url || imageUrl;
+  } catch (error) {
+    console.error("Cannot persist AI result image to Cloudinary:", error.message);
+    return imageUrl;
+  }
 }
 
 function normalizeText(value = "") {
@@ -384,11 +412,19 @@ async function createAndWaitFitroomStep({
 
     const taskStatus = await waitForFitroomResult(outfitLog.taskId, 35, apiKey);
     if (taskStatus) {
+      const signedResultImageUrl = taskStatus.download_signed_url || "";
+      const persistedResultImageUrl = await persistGeneratedResultImage(signedResultImageUrl, outfitLog.taskId);
+
       outfitLog.status = taskStatus.status || outfitLog.status;
       outfitLog.progress = Number(taskStatus.progress) || outfitLog.progress;
-      outfitLog.resultImageUrl = taskStatus.download_signed_url || outfitLog.resultImageUrl;
+      outfitLog.resultImageUrl = persistedResultImageUrl || outfitLog.resultImageUrl;
       outfitLog.error = taskStatus.error || "";
-      outfitLog.rawResponse = taskStatus;
+      outfitLog.rawResponse = {
+        ...taskStatus,
+        download_signed_url: signedResultImageUrl,
+        persisted_result_url: persistedResultImageUrl,
+        lowerClothingImageUrl: lowerClothingImageUrl || "",
+      };
       await outfitLog.save();
     }
 
@@ -854,11 +890,18 @@ exports.createTryOn = async (req, res) => {
 
     const taskStatus = await waitForFitroomResult(outfitLog.taskId);
     if (taskStatus) {
+      const signedResultImageUrl = taskStatus.download_signed_url || "";
+      const persistedResultImageUrl = await persistGeneratedResultImage(signedResultImageUrl, outfitLog.taskId);
+
       outfitLog.status = taskStatus.status || outfitLog.status;
       outfitLog.progress = Number(taskStatus.progress) || outfitLog.progress;
-      outfitLog.resultImageUrl = taskStatus.download_signed_url || outfitLog.resultImageUrl;
+      outfitLog.resultImageUrl = persistedResultImageUrl || outfitLog.resultImageUrl;
       outfitLog.error = taskStatus.error || "";
-      outfitLog.rawResponse = taskStatus;
+      outfitLog.rawResponse = {
+        ...taskStatus,
+        download_signed_url: signedResultImageUrl,
+        persisted_result_url: persistedResultImageUrl,
+      };
       await outfitLog.save();
     }
 
@@ -900,7 +943,11 @@ exports.createTryOn = async (req, res) => {
 
 exports.getMyTryOns = async (req, res) => {
   try {
-    const filter = req.user?.id ? { user: req.user.id } : { user: null };
+    const filter = {
+      user: req.user.id,
+      status: "COMPLETED",
+      resultImageUrl: { $exists: true, $ne: "", $regex: "res.cloudinary.com" },
+    };
     const recommendations = await AIOutfitRecommendation.find(filter)
       .populate("product", "name slug images price")
       .sort({ createdAt: -1 })

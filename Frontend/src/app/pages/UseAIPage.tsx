@@ -43,8 +43,9 @@ import tshirtProduct from '@/assets/8a55393af5b2913bc9b718f78f6d9d7649ea15b6.png
 import modelWithTshirt from '@/assets/04a106332b46fd32e303290a6fcb306e80cb9a91.png';
 import outfitComplete from '@/assets/d027e7715d02e5973bda20d895640cb4a33ba4d1.png';
 import modelWhiteOutfit from '@/assets/027f9141fc5b4d041b83cbfd34283e0f6c08e067.png';
+import { getStoredAuthSession } from '../lib/auth-storage';
 import { aiApi, getErrorMessage, productsApi, uploadApi } from '../lib/api';
-import type { Product } from '../types';
+import type { AIOutfitHistoryItem, Product } from '../types';
 
 const CLOTHES_IMAGES = [
   tshirtProduct, // Add the ICDN tshirt as first item
@@ -64,6 +65,54 @@ const MODEL_IMAGES = [
   modelWhiteOutfit,
   modelWhiteOutfit,
 ];
+
+const UPLOADED_MODEL_STORAGE_PREFIX = 'outfio-ai-uploaded-models';
+
+function getUploadedModelStorageKey() {
+  const userId = getStoredAuthSession()?.profile?._id || 'guest';
+  return `${UPLOADED_MODEL_STORAGE_PREFIX}:${userId}`;
+}
+
+function getUniqueModelUrls(urls: unknown) {
+  if (!Array.isArray(urls)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      urls
+        .filter((url): url is string => typeof url === 'string')
+        .map((url) => url.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function loadUploadedModelImages() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const storedValue = window.localStorage.getItem(getUploadedModelStorageKey());
+  if (!storedValue) {
+    return [];
+  }
+
+  try {
+    return getUniqueModelUrls(JSON.parse(storedValue));
+  } catch {
+    window.localStorage.removeItem(getUploadedModelStorageKey());
+    return [];
+  }
+}
+
+function saveUploadedModelImages(urls: string[]) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(getUploadedModelStorageKey(), JSON.stringify(getUniqueModelUrls(urls)));
+}
 
 const MIX_MATCH_KEYWORDS = [
   'ao',
@@ -206,8 +255,131 @@ const SegmentedControl = ({ options, activeIndex, onChange }: { options: string[
   </div>
 );
 
+function formatHistoryDate(value?: string) {
+  if (!value) {
+    return 'Vua tao';
+  }
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function historyTypeLabel(item: AIOutfitHistoryItem) {
+  return item.clothType === 'combo' ? 'Mix and match' : 'AI try on';
+}
+
+function getLowerClothingImageUrl(item: AIOutfitHistoryItem) {
+  const value = item.rawResponse?.lowerClothingImageUrl;
+  return typeof value === 'string' ? value : '';
+}
+
+const AIHistoryView = ({
+  historyItems,
+  isLoading,
+  onRefresh,
+}: {
+  historyItems: AIOutfitHistoryItem[];
+  isLoading: boolean;
+  onRefresh: () => void;
+}) => (
+  <div className="flex-1 overflow-y-auto bg-[#F9F9FB] p-4 md:p-6">
+    <div className="mx-auto max-w-[1180px]">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Lich su AI</h1>
+          <p className="mt-1 text-sm text-gray-600">Cac anh AI try on va mix and match da tao theo tai khoan hien tai.</p>
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={isLoading}
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <RotateCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          Lam moi
+        </button>
+      </div>
+
+      {isLoading && (
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+          Dang tai lich su...
+        </div>
+      )}
+
+      {!isLoading && historyItems.length === 0 && (
+        <div className="rounded-lg border border-dashed border-gray-200 bg-white p-10 text-center">
+          <History className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+          <p className="font-medium text-gray-900">Chua co anh nao trong lich su</p>
+          <p className="mt-1 text-sm text-gray-500">Sau khi tao AI try on hoac mix and match, ket qua se hien o day.</p>
+        </div>
+      )}
+
+      {!isLoading && historyItems.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {historyItems.map((item) => {
+            const lowerClothingImageUrl = getLowerClothingImageUrl(item);
+
+            return (
+            <div key={item._id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="relative aspect-[3/4] bg-gray-100">
+                <img
+                  src={item.resultImageUrl}
+                  alt={historyTypeLabel(item)}
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute left-2 top-2 rounded-md bg-white/90 px-2 py-1 text-[11px] font-semibold text-gray-800 shadow-sm">
+                  {historyTypeLabel(item)}
+                </div>
+                <div className="absolute right-2 top-2 rounded-md bg-white/90 px-2 py-1 text-[11px] font-semibold text-gray-800 shadow-sm">
+                  {item.status}
+                </div>
+              </div>
+
+              <div className="space-y-3 p-3">
+                <div>
+                  <p className="line-clamp-1 text-sm font-semibold text-gray-900">
+                    {item.product?.name || (item.clothType === 'combo' ? 'Outfit mix and match' : 'Thu do AI')}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500">{formatHistoryDate(item.createdAt)}</p>
+                </div>
+
+                <div className={`grid gap-2 ${lowerClothingImageUrl ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  <div className="aspect-[3/4] overflow-hidden rounded-md bg-gray-100">
+                    <img src={item.modelImageUrl} alt="Model" className="h-full w-full object-cover" />
+                  </div>
+                  <div className="aspect-[3/4] overflow-hidden rounded-md bg-gray-100">
+                    <img src={item.clothingImageUrl} alt="Clothing" className="h-full w-full object-cover" />
+                  </div>
+                  {lowerClothingImageUrl && (
+                    <div className="aspect-[3/4] overflow-hidden rounded-md bg-gray-100">
+                      <img src={lowerClothingImageUrl} alt="Lower clothing" className="h-full w-full object-cover" />
+                    </div>
+                  )}
+                </div>
+
+                <a
+                  href={item.resultImageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-[#20B29A] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#1a9682]"
+                >
+                  <Download className="h-4 w-4" />
+                  Mo anh ket qua
+                </a>
+              </div>
+            </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 export function UseAIPage() {
   const navigate = useNavigate();
+  const [activeResource, setActiveResource] = useState<'create' | 'history'>('create');
   const [mainMode, setMainMode] = useState(0); // 0: Thử đồ AI, 1: Phối đồ với AI
   const [clothesTab, setClothesTab] = useState(0);
   const [modelTab, setModelTab] = useState(0);
@@ -229,13 +401,26 @@ export function UseAIPage() {
   const [stylingOutfit, setStylingOutfit] = useState<{ top?: Product; bottom?: Product } | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [uploadedModelImages, setUploadedModelImages] = useState<string[]>([]);
+  const [uploadedModelImages, setUploadedModelImages] = useState<string[]>(() => loadUploadedModelImages());
   const [isUploadingModel, setIsUploadingModel] = useState(false);
   const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(() => new Set());
+  const [historyItems, setHistoryItems] = useState<AIOutfitHistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const navigateFromSidebar = (path: string) => {
     setMobileMenuOpen(false);
     navigate(path);
+  };
+
+  const openCreateMode = (mode: 0 | 1) => {
+    setActiveResource('create');
+    setMainMode(mode);
+    setMobileMenuOpen(false);
+  };
+
+  const openHistory = () => {
+    setActiveResource('history');
+    setMobileMenuOpen(false);
   };
 
   useEffect(() => {
@@ -272,6 +457,25 @@ export function UseAIPage() {
     };
   }, []);
 
+  const loadHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const response = await aiApi.getMyTryOns();
+      setHistoryItems(response.recommendations);
+    } catch (error) {
+      setHistoryItems([]);
+      alert(getErrorMessage(error));
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeResource === 'history') {
+      void loadHistory();
+    }
+  }, [activeResource]);
+
   const productChoices = useMemo(
     () => products.filter((product) => Boolean(product.image) && !brokenImageUrls.has(product.image)),
     [brokenImageUrls, products]
@@ -285,6 +489,15 @@ export function UseAIPage() {
   const modelChoices = useMemo(
     () => [...uploadedModelImages, ...MODEL_IMAGES],
     [uploadedModelImages]
+  );
+
+  const tryOnModelChoices = useMemo(
+    () => (modelTab === 1 ? uploadedModelImages : MODEL_IMAGES),
+    [modelTab, uploadedModelImages]
+  );
+
+  const getModelChoiceIndex = (displayIndex: number) => (
+    modelTab === 1 ? displayIndex : uploadedModelImages.length + displayIndex
   );
 
   useEffect(() => {
@@ -313,9 +526,14 @@ export function UseAIPage() {
     setIsUploadingModel(true);
     try {
       const response = await uploadApi.uploadImage(file);
-      setUploadedModelImages((prev) => [response.url, ...prev]);
+      setUploadedModelImages((prev) => {
+        const next = getUniqueModelUrls([response.url, ...prev]);
+        saveUploadedModelImages(next);
+        return next;
+      });
 
       if (target === 'try-on') {
+        setModelTab(1);
         setSelectedModel(0);
       } else {
         setStylingModel(0);
@@ -439,7 +657,12 @@ export function UseAIPage() {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between bg-white border-b border-gray-200 p-4 shrink-0">
         <div className="font-semibold text-gray-900 flex items-center gap-2">
-          {mainMode === 0 ? (
+          {activeResource === 'history' ? (
+            <>
+              <History className="w-5 h-5 text-[#20B29A]" />
+              Lịch sử AI
+            </>
+          ) : mainMode === 0 ? (
             <>
               <Shirt className="w-5 h-5 text-[#20B29A]" />
               Thử đồ AI
@@ -451,15 +674,25 @@ export function UseAIPage() {
             </>
           )}
         </div>
-        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-600">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => navigate('/')}
+            className="p-2 text-gray-600 hover:text-gray-900"
+            aria-label="Về trang chủ"
+            title="Về trang chủ"
+          >
+            <Home className="w-5 h-5" />
+          </button>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-600">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+          </button>
+        </div>
       </div>
 
       {/* Sidebar - Desktop & Mobile overlay */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-[240px] bg-white border-r border-gray-200 flex flex-col h-full transition-transform transform md:relative md:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-4 flex items-center justify-between md:block">
-          <NavItem icon={Home} label="Bắt đầu" />
+          <NavItem icon={Home} label="Trang chu" onClick={() => navigateFromSidebar('/')} />
           <button className="md:hidden p-2 text-gray-400" onClick={() => setMobileMenuOpen(false)}>
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -468,8 +701,8 @@ export function UseAIPage() {
         <div className="flex-1 overflow-y-auto px-4 py-2">
           <div className="mb-6">
             <h3 className="px-4 text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Tạo</h3>
-            <NavItem icon={Shirt} label="Thử đồ AI" active={mainMode === 0} onClick={() => setMainMode(0)} />
-            <NavItem icon={Sparkles} label="Phối đồ với AI" active={mainMode === 1} onClick={() => setMainMode(1)} />
+            <NavItem icon={Shirt} label="Thử đồ AI" active={activeResource === 'create' && mainMode === 0} onClick={() => openCreateMode(0)} />
+            <NavItem icon={Sparkles} label="Phối đồ với AI" active={activeResource === 'create' && mainMode === 1} onClick={() => openCreateMode(1)} />
             <NavItem icon={Wand2} label="Trình tạo mẫu AI" />
           </div>
 
@@ -478,7 +711,7 @@ export function UseAIPage() {
             <NavItem icon={Library} label="Tủ đồ của tôi" />
             <NavItem icon={Users} label="Mẫu của tôi" />
             {mainMode === 1 && <NavItem icon={Palette} label="Bộ sưu tập" />}
-            <NavItem icon={History} label="Lịch sử" />
+            <NavItem icon={History} label="Lịch sử" active={activeResource === 'history'} onClick={openHistory} />
           </div>
         </div>
 
@@ -505,6 +738,15 @@ export function UseAIPage() {
         {mobileMenuOpen && (
           <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setMobileMenuOpen(false)} />
         )}
+
+        {activeResource === 'history' ? (
+          <AIHistoryView
+            historyItems={historyItems}
+            isLoading={isLoadingHistory}
+            onRefresh={() => void loadHistory()}
+          />
+        ) : (
+          <>
 
         {/* Configuration Panel */}
         <div className="w-full md:w-[360px] bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col shrink-0 relative z-10 shadow-none md:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] h-auto md:h-full">
@@ -625,24 +867,34 @@ export function UseAIPage() {
                       />
                     </label>
 
-                    {modelChoices.map((src, i) => (
+                    {modelTab === 1 && uploadedModelImages.length === 0 && (
+                      <div className="col-span-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-6 text-center text-xs text-gray-500">
+                        Chua co mau nao. Upload anh len Cloudinary de luu vao mau cua toi.
+                      </div>
+                    )}
+
+                    {tryOnModelChoices.map((src, i) => {
+                      const modelIndex = getModelChoiceIndex(i);
+
+                      return (
                       <button
-                        key={i}
-                        onClick={() => setSelectedModel(i)}
+                        key={`${modelTab}-${src}-${i}`}
+                        onClick={() => setSelectedModel(modelIndex)}
                         className={`relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer transition-all border-2 ${
-                          selectedModel === i
+                          selectedModel === modelIndex
                             ? 'border-[#20B29A] ring-2 ring-[#20B29A] ring-offset-1'
                             : 'border-transparent hover:border-[#20B29A]'
                         }`}
                       >
                         <img src={src} alt="Model" className="w-full h-full object-cover" />
-                        {selectedModel === i && (
+                        {selectedModel === modelIndex && (
                           <div className="absolute top-1 right-1 bg-[#20B29A] rounded-full p-0.5">
                             <Check className="w-3 h-3 text-white" />
                           </div>
                         )}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </>
@@ -1220,6 +1472,8 @@ export function UseAIPage() {
           )}
         </div>
       )}
+          </>
+        )}
     </div>
 
     {/* Plan Modal */}

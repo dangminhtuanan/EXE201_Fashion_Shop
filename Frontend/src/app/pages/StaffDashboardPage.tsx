@@ -6,10 +6,10 @@ import {
   CreditCard,
   LayoutDashboard,
   LogOut,
+  PackagePlus,
   RefreshCcw,
   Search,
   Truck,
-  Users,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -32,35 +32,18 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { useAuth } from "../contexts/AuthContext";
-import {
-  getErrorMessage,
-  ordersApi,
-  paymentsApi,
-  productsApi,
-  shippingApi,
-  usersApi,
-} from "../lib/api";
-import type {
-  Order,
-  Payment,
-  PaymentStatus,
-  Product,
-  ShippingRecord,
-  ShippingStatus,
-  UserProfile,
-} from "../types";
+import { getErrorMessage, ordersApi, paymentsApi, productsApi, shippingApi } from "../lib/api";
+import type { Order, Payment, PaymentStatus, Product, UserProfile } from "../types";
 
-type ManagerSection = "overview" | "orders" | "payments" | "shipping" | "products" | "users";
-type ManagerOrder = Order & { user?: Pick<UserProfile, "_id" | "username" | "email" | "phone"> };
+type StaffSection = "overview" | "orders" | "payments" | "products";
+type StaffOrder = Order & { user?: Pick<UserProfile, "_id" | "username" | "email" | "phone"> };
 
 const sections = [
   { id: "overview", label: "Tong quan", icon: LayoutDashboard },
   { id: "orders", label: "Orders", icon: ClipboardList },
   { id: "payments", label: "Payments", icon: CreditCard },
-  { id: "shipping", label: "Shipping", icon: Truck },
   { id: "products", label: "Products", icon: Boxes },
-  { id: "users", label: "Users", icon: Users },
-] satisfies Array<{ id: ManagerSection; label: string; icon: typeof LayoutDashboard }>;
+] satisfies Array<{ id: StaffSection; label: string; icon: typeof LayoutDashboard }>;
 
 const orderStatuses: Order["status"][] = [
   "pending",
@@ -91,19 +74,6 @@ const paymentStatuses: PaymentStatus[] = [
   "FAILED",
 ];
 
-const shippingStatuses: ShippingStatus[] = [
-  "pending",
-  "picked_up",
-  "in_transit",
-  "out_for_delivery",
-  "delivered",
-  "failed",
-  "returned",
-  "cancelled",
-];
-
-const editableShippingStatuses = shippingStatuses.filter((status) => status !== "cancelled");
-
 function money(value?: number) {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -116,45 +86,35 @@ function dateTime(value?: string | null) {
   return value ? new Date(value).toLocaleString("vi-VN") : "--";
 }
 
-function isFinalShippingStatus(status: ShippingStatus) {
-  return ["delivered", "failed", "returned", "cancelled"].includes(status);
+function canCreateShipping(order: StaffOrder) {
+  return ["confirmed", "packing", "PAID"].includes(order.status);
 }
 
-export function ManagerDashboardPage() {
+export function StaffDashboardPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [activeSection, setActiveSection] = useState<ManagerSection>("overview");
-
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [orders, setOrders] = useState<ManagerOrder[]>([]);
+  const [activeSection, setActiveSection] = useState<StaffSection>("overview");
+  const [orders, setOrders] = useState<StaffOrder[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [shipments, setShipments] = useState<ShippingRecord[]>([]);
-
   const [search, setSearch] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
-  const [shippingStatusFilter, setShippingStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersResponse, ordersResponse, paymentsResponse, productsResponse, shippingResponse] =
-        await Promise.all([
-          usersApi.getAll(),
-          ordersApi.getAll(orderStatusFilter ? { status: orderStatusFilter as Order["status"] } : {}),
-          paymentsApi.getAll(paymentStatusFilter ? { status: paymentStatusFilter as PaymentStatus } : {}),
-          productsApi.getAll({ limit: 100, sort: "newest" }),
-          shippingApi.getAll(shippingStatusFilter ? (shippingStatusFilter as ShippingStatus) : undefined),
-        ]);
+      const [ordersResponse, paymentsResponse, productsResponse] = await Promise.all([
+        ordersApi.getAll(orderStatusFilter ? { status: orderStatusFilter as Order["status"] } : {}),
+        paymentsApi.getAll(paymentStatusFilter ? { status: paymentStatusFilter as PaymentStatus } : {}),
+        productsApi.getAll({ limit: 100, sort: "newest" }),
+      ]);
 
-      setUsers(usersResponse.users);
-      setOrders(ordersResponse.orders as ManagerOrder[]);
+      setOrders(ordersResponse.orders as StaffOrder[]);
       setPayments(paymentsResponse.payments);
       setProducts(productsResponse.products);
-      setShipments(shippingResponse.data);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -164,32 +124,24 @@ export function ManagerDashboardPage() {
 
   useEffect(() => {
     void loadData();
-  }, [orderStatusFilter, paymentStatusFilter, shippingStatusFilter]);
+  }, [orderStatusFilter, paymentStatusFilter]);
 
   const stats = useMemo(
     () => ({
-      users: users.length,
       orders: orders.length,
+      pendingOrders: orders.filter((item) => ["pending", "PENDING_PAYMENT"].includes(item.status)).length,
       payments: payments.length,
+      paidPayments: payments.filter((item) => ["paid", "PAID"].includes(item.status)).length,
       products: products.length,
-      shipments: shipments.length,
-      activeShipments: shipments.filter((item) => !isFinalShippingStatus(item.shippingStatus)).length,
       lowStock: products.filter((item) => (item.stock || 0) <= 5).length,
       revenue: payments
         .filter((item) => ["paid", "PAID"].includes(item.status))
         .reduce((total, item) => total + item.amount, 0),
     }),
-    [orders, payments, products, shipments, users],
+    [orders, payments, products],
   );
 
   const keyword = search.trim().toLowerCase();
-
-  const filteredUsers = users.filter((item) =>
-    !keyword ||
-    [item.username, item.email, item.role, item.phone, item.address].some((value) =>
-      String(value || "").toLowerCase().includes(keyword),
-    ),
-  );
 
   const filteredOrders = orders.filter((item) =>
     !keyword ||
@@ -216,13 +168,6 @@ export function ManagerDashboardPage() {
     ),
   );
 
-  const filteredShipments = shipments.filter((item) =>
-    !keyword ||
-    [item.trackingNumber, item.shippingStatus, item.shippingMethod, item.order?.customerName, item.order?.phone, item.shipper?.username, item.shipper?.email].some((value) =>
-      String(value || "").toLowerCase().includes(keyword),
-    ),
-  );
-
   const handleLogout = () => {
     logout();
     toast.success("Da dang xuat");
@@ -237,7 +182,7 @@ export function ManagerDashboardPage() {
     setUpdatingId(orderId);
     try {
       const response = await ordersApi.updateStatus(orderId, { [field]: value });
-      setOrders((prev) => prev.map((item) => (item._id === orderId ? (response.order as ManagerOrder) : item)));
+      setOrders((prev) => prev.map((item) => (item._id === orderId ? (response.order as StaffOrder) : item)));
       toast.success("Da cap nhat order");
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -260,13 +205,15 @@ export function ManagerDashboardPage() {
     }
   };
 
-  const handleShippingStatusChange = async (shippingId: string, status: ShippingStatus) => {
-    setUpdatingId(shippingId);
+  const handleCreateShipping = async (order: StaffOrder) => {
+    setUpdatingId(order._id);
     try {
-      const response = await shippingApi.updateStatus(shippingId, { status });
-      setShipments((prev) => prev.map((item) => (item._id === shippingId ? response.data : item)));
-      void loadData();
-      toast.success("Da cap nhat shipping");
+      await shippingApi.create({
+        orderId: order._id,
+        shippingMethod: "standard",
+      });
+      await loadData();
+      toast.success("Da tao shipping cho order");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -280,8 +227,8 @@ export function ManagerDashboardPage() {
         <aside className="hidden w-72 shrink-0 border-r bg-white px-4 py-5 lg:block">
           <div className="mb-8 px-3">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outfio</p>
-            <h1 className="mt-2 text-2xl font-bold">Manager dashboard</h1>
-            <p className="mt-2 text-sm text-slate-500">Van hanh don hang, thanh toan va giao hang</p>
+            <h1 className="mt-2 text-2xl font-bold">Staff dashboard</h1>
+            <p className="mt-2 text-sm text-slate-500">Xu ly order, payment va tao shipping</p>
           </div>
 
           <nav className="space-y-1">
@@ -305,7 +252,7 @@ export function ManagerDashboardPage() {
           </nav>
 
           <div className="mt-8 rounded-md border bg-slate-50 p-3 text-sm text-slate-600">
-            <p className="font-medium text-slate-900">{user?.username || "Manager"}</p>
+            <p className="font-medium text-slate-900">{user?.username || "Staff"}</p>
             <p className="mt-1 break-all">{user?.email}</p>
             <Button variant="outline" className="mt-3 w-full" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
@@ -319,7 +266,7 @@ export function ManagerDashboardPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outfio</p>
-                <h1 className="text-xl font-bold">Manager dashboard</h1>
+                <h1 className="text-xl font-bold">Staff dashboard</h1>
               </div>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
@@ -344,7 +291,7 @@ export function ManagerDashboardPage() {
           <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
             <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-500">Xin chao, {user?.username || "manager"}</p>
+                <p className="text-sm font-medium text-slate-500">Xin chao, {user?.username || "staff"}</p>
                 <h2 className="mt-1 text-3xl font-bold tracking-tight">
                   {sections.find((item) => item.id === activeSection)?.label}
                 </h2>
@@ -361,13 +308,12 @@ export function ManagerDashboardPage() {
               </div>
             </div>
 
-            <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-              <StatCard title="Users" value={stats.users} icon={Users} />
-              <StatCard title="Orders" value={stats.orders} icon={ClipboardList} />
-              <StatCard title="Payments" value={stats.payments} icon={CreditCard} />
-              <StatCard title="Shipping" value={stats.shipments} description={`${stats.activeShipments} active`} icon={Truck} />
+            <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <StatCard title="Orders" value={stats.orders} description={`${stats.pendingOrders} pending`} icon={ClipboardList} />
+              <StatCard title="Payments" value={stats.payments} description={`${stats.paidPayments} paid`} icon={CreditCard} />
               <StatCard title="Products" value={stats.products} description={`${stats.lowStock} low stock`} icon={Boxes} />
               <StatCard title="Revenue" value={money(stats.revenue)} icon={BadgeCheck} />
+              <StatCard title="Shipping action" value={orders.filter(canCreateShipping).length} description="ready orders" icon={Truck} />
             </div>
 
             {activeSection !== "overview" && (
@@ -402,16 +348,6 @@ export function ManagerDashboardPage() {
                       {paymentStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                     </select>
                   )}
-                  {activeSection === "shipping" && (
-                    <select
-                      value={shippingStatusFilter}
-                      onChange={(event) => setShippingStatusFilter(event.target.value)}
-                      className="h-9 rounded-md border bg-white px-3 text-sm"
-                    >
-                      <option value="">Tat ca shipping status</option>
-                      {shippingStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
-                    </select>
-                  )}
                 </div>
               </div>
             )}
@@ -421,12 +357,12 @@ export function ManagerDashboardPage() {
                 <RecentOrders orders={orders.slice(0, 6)} loading={loading} />
                 <LowStockProducts products={products.filter((item) => (item.stock || 0) <= 5).slice(0, 6)} loading={loading} />
                 <RecentPayments payments={payments.slice(0, 6)} loading={loading} />
-                <ActiveShipments shipments={shipments.filter((item) => !isFinalShippingStatus(item.shippingStatus)).slice(0, 6)} loading={loading} />
+                <ReadyShippingOrders orders={orders.filter(canCreateShipping).slice(0, 6)} loading={loading} onCreateShipping={handleCreateShipping} updatingId={updatingId} />
               </div>
             )}
 
             {activeSection === "orders" && (
-              <DataCard title="Danh sach order" description="Manager co the cap nhat order va payment status">
+              <DataCard title="Danh sach order" description="Staff cap nhat order/payment status va tao shipping">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -436,7 +372,7 @@ export function ManagerDashboardPage() {
                       <TableHead>Tong tien</TableHead>
                       <TableHead>Order status</TableHead>
                       <TableHead>Payment</TableHead>
-                      <TableHead>Ngay tao</TableHead>
+                      <TableHead>Shipping</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -469,7 +405,17 @@ export function ManagerDashboardPage() {
                             {orderPaymentStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                           </select>
                         </TableCell>
-                        <TableCell>{dateTime(item.createdAt)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!canCreateShipping(item) || updatingId === item._id}
+                            onClick={() => void handleCreateShipping(item)}
+                          >
+                            <PackagePlus className="h-4 w-4" />
+                            Tao shipping
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {!loading && filteredOrders.length === 0 && <EmptyRow colSpan={7} text="Khong co order phu hop" />}
@@ -479,7 +425,7 @@ export function ManagerDashboardPage() {
             )}
 
             {activeSection === "payments" && (
-              <DataCard title="Danh sach payment" description="Theo doi va cap nhat trang thai thanh toan">
+              <DataCard title="Danh sach payment" description="Staff cap nhat trang thai thanh toan">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -526,57 +472,8 @@ export function ManagerDashboardPage() {
               </DataCard>
             )}
 
-            {activeSection === "shipping" && (
-              <DataCard title="Danh sach shipping" description="Theo doi va cap nhat trang thai giao hang">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tracking</TableHead>
-                      <TableHead>Khach hang</TableHead>
-                      <TableHead>Shipper</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Cap nhat gan nhat</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? <EmptyRow colSpan={6} /> : filteredShipments.map((item) => {
-                      const latestUpdate = item.updates?.[item.updates.length - 1];
-                      return (
-                        <TableRow key={item._id}>
-                          <TableCell className="font-mono text-xs">{item.trackingNumber || `#${item._id.slice(-8).toUpperCase()}`}</TableCell>
-                          <TableCell>
-                            <div className="font-medium">{item.order?.customerName || "--"}</div>
-                            <div className="text-xs text-slate-500">{item.order?.phone || "--"}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium">{item.shipper?.username || "Chua gan"}</div>
-                            <div className="text-xs text-slate-500">{item.shipper?.email || "--"}</div>
-                          </TableCell>
-                          <TableCell>{item.shippingMethod}</TableCell>
-                          <TableCell>
-                            <select
-                              value={item.shippingStatus}
-                              disabled={updatingId === item._id || item.shippingStatus === "cancelled"}
-                              onChange={(event) => void handleShippingStatusChange(item._id, event.target.value as ShippingStatus)}
-                              className="h-8 rounded-md border bg-white px-2 text-xs"
-                            >
-                              {editableShippingStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
-                              {item.shippingStatus === "cancelled" && <option value="cancelled">cancelled</option>}
-                            </select>
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-600">{latestUpdate?.notes || latestUpdate?.location || "--"}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {!loading && filteredShipments.length === 0 && <EmptyRow colSpan={6} text="Khong co shipping phu hop" />}
-                  </TableBody>
-                </Table>
-              </DataCard>
-            )}
-
             {activeSection === "products" && (
-              <DataCard title="Danh sach product" description="Theo doi hang ton kho va san pham ban chay">
+              <DataCard title="Danh sach product" description="Staff theo doi product va ton kho">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -607,36 +504,6 @@ export function ManagerDashboardPage() {
                 </Table>
               </DataCard>
             )}
-
-            {activeSection === "users" && (
-              <DataCard title="Danh sach user" description="Theo doi user va vai tro trong he thong">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Ten</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Vai tro</TableHead>
-                      <TableHead>AI credits</TableHead>
-                      <TableHead>Cap nhat</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? <EmptyRow colSpan={6} /> : filteredUsers.map((item) => (
-                      <TableRow key={item._id}>
-                        <TableCell className="font-medium">{item.username}</TableCell>
-                        <TableCell>{item.email}</TableCell>
-                        <TableCell>{item.phone || "--"}</TableCell>
-                        <TableCell><Badge variant={item.role === "manager" ? "default" : "secondary"}>{item.role}</Badge></TableCell>
-                        <TableCell>{item.aiCredits || 0}</TableCell>
-                        <TableCell>{dateTime(item.updatedAt)}</TableCell>
-                      </TableRow>
-                    ))}
-                    {!loading && filteredUsers.length === 0 && <EmptyRow colSpan={6} text="Khong co user phu hop" />}
-                  </TableBody>
-                </Table>
-              </DataCard>
-            )}
           </div>
         </main>
       </div>
@@ -653,7 +520,7 @@ function StatCard({
   title: string;
   value: number | string;
   description?: string;
-  icon: typeof Users;
+  icon: typeof ClipboardList;
 }) {
   return (
     <Card>
@@ -691,12 +558,12 @@ function EmptyRow({ colSpan, text = "Dang tai du lieu..." }: { colSpan: number; 
   );
 }
 
-function RecentOrders({ orders, loading }: { orders: ManagerOrder[]; loading: boolean }) {
+function RecentOrders({ orders, loading }: { orders: StaffOrder[]; loading: boolean }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Order moi nhat</CardTitle>
-        <CardDescription>Theo du lieu vua fetch tu backend</CardDescription>
+        <CardDescription>Cac don can xu ly gan day</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
@@ -724,7 +591,7 @@ function LowStockProducts({ products, loading }: { products: Product[]; loading:
     <Card>
       <CardHeader>
         <CardTitle>Product sap het hang</CardTitle>
-        <CardDescription>Can uu tien kiem tra ton kho</CardDescription>
+        <CardDescription>Can bao cao/bo sung hang</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
@@ -775,26 +642,43 @@ function RecentPayments({ payments, loading }: { payments: Payment[]; loading: b
   );
 }
 
-function ActiveShipments({ shipments, loading }: { shipments: ShippingRecord[]; loading: boolean }) {
+function ReadyShippingOrders({
+  orders,
+  loading,
+  onCreateShipping,
+  updatingId,
+}: {
+  orders: StaffOrder[];
+  loading: boolean;
+  onCreateShipping: (order: StaffOrder) => void;
+  updatingId: string | null;
+}) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Shipping dang xu ly</CardTitle>
-        <CardDescription>Cac don giao hang chua ket thuc</CardDescription>
+        <CardTitle>Order san sang tao shipping</CardTitle>
+        <CardDescription>Cac don da xac nhan/packing</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
           <p className="text-sm text-slate-500">Dang tai...</p>
-        ) : shipments.length === 0 ? (
-          <p className="text-sm text-slate-500">Khong co shipping dang xu ly</p>
+        ) : orders.length === 0 ? (
+          <p className="text-sm text-slate-500">Chua co order san sang tao shipping</p>
         ) : (
-          shipments.map((shipment) => (
-            <div key={shipment._id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
+          orders.map((order) => (
+            <div key={order._id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
               <div>
-                <p className="font-medium">{shipment.trackingNumber || shipment._id.slice(-8)}</p>
-                <p className="text-sm text-slate-500">{shipment.order?.customerName || "--"}</p>
+                <p className="font-medium">{order.customerName}</p>
+                <p className="text-sm text-slate-500">#{order._id.slice(-8).toUpperCase()} · {order.status}</p>
               </div>
-              <Badge variant="secondary">{shipment.shippingStatus}</Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={updatingId === order._id}
+                onClick={() => onCreateShipping(order)}
+              >
+                Tao shipping
+              </Button>
             </div>
           ))
         )}

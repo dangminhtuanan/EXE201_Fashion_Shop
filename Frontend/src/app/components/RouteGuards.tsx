@@ -30,9 +30,11 @@ export function GuestOnlyRoute() {
             ? "/admin"
             : user?.role === "manager"
               ? "/manager"
-              : user?.role === "shipper"
-                ? "/shipper"
-                : "/"
+              : user?.role === "staff"
+                ? "/staff"
+                : user?.role === "shipper"
+                  ? "/shipper"
+                  : "/"
         }
         replace
       />

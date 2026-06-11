@@ -14,6 +14,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { PaymentResultPage } from './pages/PaymentResultPage';
 import { ShipperDashboardPage } from './pages/ShipperDashboardPage';
+import { StaffDashboardPage } from './pages/StaffDashboardPage';
 import { AIPackagesPage } from './pages/AIPackagesPage';
 import { AIPaymentResultPage } from './pages/AIPaymentResultPage';
 import { GuestOnlyRoute, RequireAdmin, RequireAuth, RequireRoles } from './components/RouteGuards';
@@ -110,6 +111,15 @@ export const router = createBrowserRouter([
       {
         path: 'manager',
         Component: ManagerDashboardPage,
+      },
+    ],
+  },
+  {
+    Component: () => <RequireRoles roles={['staff']} />,
+    children: [
+      {
+        path: 'staff',
+        Component: StaffDashboardPage,
       },
     ],
   },

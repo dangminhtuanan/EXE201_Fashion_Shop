@@ -43,6 +43,10 @@ export function LoginPage() {
       navigate(
         session.profile.role === "admin"
           ? "/admin"
+          : session.profile.role === "manager"
+            ? "/manager"
+            : session.profile.role === "staff"
+              ? "/staff"
           : session.profile.role === "shipper"
             ? "/shipper"
             : "/",

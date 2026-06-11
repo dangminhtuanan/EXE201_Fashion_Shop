@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   Boxes,
   ClipboardList,
+  CreditCard,
   LayoutDashboard,
   LogOut,
   PackagePlus,
@@ -11,6 +12,7 @@ import {
   Search,
   Shield,
   Trash2,
+  Truck,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -49,12 +51,14 @@ import {
   categoriesApi,
   getErrorMessage,
   ordersApi,
+  paymentsApi,
   productsApi,
+  shippingApi,
   usersApi,
 } from "../lib/api";
-import type { Category, Order, Product, UserProfile, UserRole } from "../types";
+import type { Category, Order, Payment, PaymentStatus, Product, ShippingRecord, ShippingStatus, UserProfile, UserRole } from "../types";
 
-type AdminSection = "overview" | "users" | "orders" | "products";
+type AdminSection = "overview" | "users" | "orders" | "payments" | "shipping" | "products";
 type AdminOrder = Order & { user?: Pick<UserProfile, "_id" | "username" | "email" | "phone"> };
 
 interface UserFormData {
@@ -131,10 +135,34 @@ const paymentStatuses: Order["paymentStatus"][] = [
   "refunded",
 ];
 
+const adminPaymentStatuses: PaymentStatus[] = [
+  "pending",
+  "paid",
+  "failed",
+  "refunded",
+  "PENDING",
+  "PAID",
+  "CANCELLED",
+  "FAILED",
+];
+
+const shippingStatuses: ShippingStatus[] = [
+  "pending",
+  "picked_up",
+  "in_transit",
+  "out_for_delivery",
+  "delivered",
+  "failed",
+  "returned",
+  "cancelled",
+];
+
 const sections = [
   { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
   { id: "users", label: "Quản lý user", icon: Users },
   { id: "orders", label: "Quản lý order", icon: ClipboardList },
+  { id: "payments", label: "Payments", icon: CreditCard },
+  { id: "shipping", label: "Shipping", icon: Truck },
   { id: "products", label: "Quản lý product", icon: Boxes },
 ] satisfies Array<{ id: AdminSection; label: string; icon: typeof LayoutDashboard }>;
 
@@ -164,16 +192,24 @@ export function AdminDashboardPage() {
 
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [shippings, setShippings] = useState<ShippingRecord[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
   const [userSearch, setUserSearch] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
+  const [paymentSearch, setPaymentSearch] = useState("");
+  const [shippingSearch, setShippingSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
+  const [shippingStatusFilter, setShippingStatusFilter] = useState("");
 
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [loadingPayments, setLoadingPayments] = useState(true);
+  const [loadingShippings, setLoadingShippings] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
@@ -211,6 +247,34 @@ export function AdminDashboardPage() {
     }
   };
 
+  const loadPayments = async () => {
+    setLoadingPayments(true);
+    try {
+      const response = await paymentsApi.getAll(
+        paymentStatusFilter ? { status: paymentStatusFilter as PaymentStatus } : {},
+      );
+      setPayments(response.payments);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  const loadShippings = async () => {
+    setLoadingShippings(true);
+    try {
+      const response = await shippingApi.getAll(
+        shippingStatusFilter ? (shippingStatusFilter as ShippingStatus) : undefined,
+      );
+      setShippings(response.data);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setLoadingShippings(false);
+    }
+  };
+
   const loadProducts = async () => {
     setLoadingProducts(true);
     try {
@@ -228,12 +292,20 @@ export function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    void Promise.all([loadUsers(), loadOrders(), loadProducts()]);
+    void Promise.all([loadUsers(), loadOrders(), loadPayments(), loadShippings(), loadProducts()]);
   }, []);
 
   useEffect(() => {
     void loadOrders();
   }, [orderStatusFilter]);
+
+  useEffect(() => {
+    void loadPayments();
+  }, [paymentStatusFilter]);
+
+  useEffect(() => {
+    void loadShippings();
+  }, [shippingStatusFilter]);
 
   const stats = useMemo(() => {
     const revenue = orders
@@ -245,11 +317,15 @@ export function AdminDashboardPage() {
       admins: users.filter((item) => item.role === "admin").length,
       orders: orders.length,
       pendingOrders: orders.filter((item) => ["pending", "PENDING_PAYMENT"].includes(item.status)).length,
+      payments: payments.length,
+      paidPayments: payments.filter((item) => ["paid", "PAID"].includes(item.status)).length,
+      shippings: shippings.length,
+      activeShippings: shippings.filter((item) => !["delivered", "failed", "returned", "cancelled"].includes(item.shippingStatus)).length,
       products: products.length,
       lowStock: products.filter((item) => (item.stock || 0) <= 5).length,
       revenue,
     };
-  }, [orders, products, users]);
+  }, [orders, payments, products, shippings, users]);
 
   const filteredUsers = users.filter((item) => {
     const keyword = userSearch.trim().toLowerCase();
@@ -263,6 +339,24 @@ export function AdminDashboardPage() {
     const keyword = orderSearch.trim().toLowerCase();
     if (!keyword) return true;
     return [item._id, item.customerName, item.phone, item.address, item.status, item.paymentStatus, item.user?.email]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(keyword));
+  });
+
+  const filteredPayments = payments.filter((item) => {
+    const keyword = paymentSearch.trim().toLowerCase();
+    if (!keyword) return true;
+    const order = typeof item.order === "object" ? item.order : null;
+    const paymentUser = typeof item.user === "object" ? item.user : null;
+    return [item._id, item.provider, item.status, item.transactionNo, item.transactionReference, item.orderCode, order?._id, paymentUser?.email, paymentUser?.username]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(keyword));
+  });
+
+  const filteredShippings = shippings.filter((item) => {
+    const keyword = shippingSearch.trim().toLowerCase();
+    if (!keyword) return true;
+    return [item._id, item.trackingNumber, item.shippingStatus, item.shippingMethod, item.order?._id, item.order?.customerName, item.order?.phone, item.shipper?.email, item.shipper?.username]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(keyword));
   });
@@ -357,6 +451,28 @@ export function AdminDashboardPage() {
       const response = await ordersApi.updateStatus(orderId, { [field]: value });
       setOrders((prev) => prev.map((item) => (item._id === orderId ? (response.order as AdminOrder) : item)));
       toast.success("Cập nhật order thành công");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handlePaymentStatusChange = async (paymentId: string, status: PaymentStatus) => {
+    try {
+      const response = await paymentsApi.updateStatus(paymentId, { status });
+      setPayments((prev) => prev.map((item) => (item._id === paymentId ? response.payment : item)));
+      void loadOrders();
+      toast.success("Cập nhật payment thành công");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handleShippingStatusChange = async (shippingId: string, status: ShippingStatus) => {
+    try {
+      const response = await shippingApi.updateStatus(shippingId, { status });
+      setShippings((prev) => prev.map((item) => (item._id === shippingId ? response.data : item)));
+      void loadOrders();
+      toast.success("Cập nhật shipping thành công");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -516,7 +632,7 @@ export function AdminDashboardPage() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => void Promise.all([loadUsers(), loadOrders(), loadProducts()])}
+                  onClick={() => void Promise.all([loadUsers(), loadOrders(), loadPayments(), loadShippings(), loadProducts()])}
                 >
                   <RefreshCcw className="h-4 w-4" />
                   Làm mới tất cả
@@ -528,9 +644,11 @@ export function AdminDashboardPage() {
               </div>
             </div>
 
-            <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
               <StatCard title="Users" value={stats.users} description={`${stats.admins} tài khoản admin`} icon={Users} />
               <StatCard title="Orders" value={stats.orders} description={`${stats.pendingOrders} đơn đang chờ`} icon={ClipboardList} />
+              <StatCard title="Payments" value={stats.payments} description={`${stats.paidPayments} đã thanh toán`} icon={CreditCard} />
+              <StatCard title="Shipping" value={stats.shippings} description={`${stats.activeShippings} đang xử lý`} icon={Truck} />
               <StatCard title="Products" value={stats.products} description={`${stats.lowStock} sản phẩm sắp hết`} icon={Boxes} />
               <StatCard title="Doanh thu đã ghi nhận" value={money(stats.revenue)} description="Từ các đơn đã thanh toán" icon={BadgeCheck} />
             </div>
@@ -677,6 +795,156 @@ export function AdminDashboardPage() {
                             <TableCell>{dateTime(item.createdAt)}</TableCell>
                           </TableRow>
                         ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {activeSection === "payments" && (
+              <Card>
+                <CardHeader className="gap-4">
+                  <Toolbar
+                    title="Danh sách payment"
+                    description="Fetch từ API /payments, cập nhật bằng /payments/:id/status"
+                    searchValue={paymentSearch}
+                    searchPlaceholder="Tìm mã payment, provider, user..."
+                    onSearchChange={setPaymentSearch}
+                    onRefresh={() => void loadPayments()}
+                    action={
+                      <select
+                        value={paymentStatusFilter}
+                        onChange={(e) => setPaymentStatusFilter(e.target.value)}
+                        className="h-9 rounded-md border bg-white px-3 text-sm"
+                      >
+                        <option value="">Tất cả trạng thái</option>
+                        {adminPaymentStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                      </select>
+                    }
+                  />
+                </CardHeader>
+                <CardContent className="overflow-x-auto p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Mã payment</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Provider</TableHead>
+                        <TableHead>Số tiền</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Order</TableHead>
+                        <TableHead>Ngày tạo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loadingPayments ? (
+                        <EmptyRow colSpan={7} text="Đang tải payment..." />
+                      ) : filteredPayments.length === 0 ? (
+                        <EmptyRow colSpan={7} text="Không có payment phù hợp" />
+                      ) : (
+                        filteredPayments.map((item) => {
+                          const paymentUser = typeof item.user === "object" ? item.user : null;
+                          const order = typeof item.order === "object" ? item.order : null;
+                          return (
+                            <TableRow key={item._id}>
+                              <TableCell className="font-mono text-xs">#{item._id.slice(-8).toUpperCase()}</TableCell>
+                              <TableCell>
+                                <div className="font-medium">{paymentUser?.username || "--"}</div>
+                                <div className="text-xs text-slate-500">{paymentUser?.email || "--"}</div>
+                              </TableCell>
+                              <TableCell>{item.provider}</TableCell>
+                              <TableCell className="font-medium">{money(item.amount)}</TableCell>
+                              <TableCell>
+                                <select
+                                  value={item.status}
+                                  onChange={(e) => void handlePaymentStatusChange(item._id, e.target.value as PaymentStatus)}
+                                  className="h-8 rounded-md border bg-white px-2 text-xs"
+                                >
+                                  {adminPaymentStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                                </select>
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">{order?._id ? `#${order._id.slice(-8).toUpperCase()}` : "--"}</TableCell>
+                              <TableCell>{dateTime(item.createdAt)}</TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {activeSection === "shipping" && (
+              <Card>
+                <CardHeader className="gap-4">
+                  <Toolbar
+                    title="Danh sách shipping"
+                    description="Fetch từ API /shipping, cập nhật bằng /shipping/:id/status"
+                    searchValue={shippingSearch}
+                    searchPlaceholder="Tìm tracking, order, shipper..."
+                    onSearchChange={setShippingSearch}
+                    onRefresh={() => void loadShippings()}
+                    action={
+                      <select
+                        value={shippingStatusFilter}
+                        onChange={(e) => setShippingStatusFilter(e.target.value)}
+                        className="h-9 rounded-md border bg-white px-3 text-sm"
+                      >
+                        <option value="">Tất cả trạng thái</option>
+                        {shippingStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                      </select>
+                    }
+                  />
+                </CardHeader>
+                <CardContent className="overflow-x-auto p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tracking</TableHead>
+                        <TableHead>Order</TableHead>
+                        <TableHead>Shipper</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Cập nhật gần nhất</TableHead>
+                        <TableHead>Ngày tạo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loadingShippings ? (
+                        <EmptyRow colSpan={7} text="Đang tải shipping..." />
+                      ) : filteredShippings.length === 0 ? (
+                        <EmptyRow colSpan={7} text="Không có shipping phù hợp" />
+                      ) : (
+                        filteredShippings.map((item) => {
+                          const latestUpdate = item.updates?.[item.updates.length - 1];
+                          return (
+                            <TableRow key={item._id}>
+                              <TableCell className="font-mono text-xs">{item.trackingNumber || `#${item._id.slice(-8).toUpperCase()}`}</TableCell>
+                              <TableCell>
+                                <div className="font-medium">{item.order?.customerName || "--"}</div>
+                                <div className="text-xs text-slate-500">{item.order?.phone || item.order?._id || "--"}</div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-medium">{item.shipper?.username || "Chưa gán"}</div>
+                                <div className="text-xs text-slate-500">{item.shipper?.email || "--"}</div>
+                              </TableCell>
+                              <TableCell>{item.shippingMethod}</TableCell>
+                              <TableCell>
+                                <select
+                                  value={item.shippingStatus}
+                                  onChange={(e) => void handleShippingStatusChange(item._id, e.target.value as ShippingStatus)}
+                                  className="h-8 rounded-md border bg-white px-2 text-xs"
+                                >
+                                  {shippingStatuses.map((status) => <option key={status} value={status} disabled={status === "cancelled"}>{status}</option>)}
+                                </select>
+                              </TableCell>
+                              <TableCell className="text-xs text-slate-600">{latestUpdate?.notes || latestUpdate?.location || "--"}</TableCell>
+                              <TableCell>{dateTime(item.createdAt)}</TableCell>
+                            </TableRow>
+                          );
+                        })
                       )}
                     </TableBody>
                   </Table>

@@ -23,7 +23,7 @@ router.post("/chat", optionalAuthMiddleware, chatWithGemini);
 router.post("/mix-match", optionalAuthMiddleware, createMixMatch);
 router.post("/mix-match/try-on", optionalAuthMiddleware, createMixMatchTryOn);
 router.post("/try-on", optionalAuthMiddleware, createTryOn);
-router.get("/try-ons/my", optionalAuthMiddleware, getMyTryOns);
+router.get("/try-ons/my", authMiddleware, getMyTryOns);
 router.post("/behavior-logs", optionalAuthMiddleware, createBehaviorLog);
 router.post("/chatbot-logs", optionalAuthMiddleware, createChatbotLog);
 router.get("/behavior-logs", staffOnly, getBehaviorLogs);

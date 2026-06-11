@@ -5,6 +5,7 @@ import {
   setStoredAuthSession,
 } from "./auth-storage";
 import type {
+  AIOutfitHistoryItem,
   AIPackage,
   AITransaction,
   AuthSession,
@@ -17,6 +18,8 @@ import type {
   Order,
   OtpPayload,
   Pagination,
+  Payment,
+  PaymentStatus,
   Product,
   RegisterPayload,
   Review,
@@ -356,6 +359,14 @@ interface PaymentStatusResponse extends MessageResponse {
   orderId?: string;
 }
 
+interface PaymentsResponse extends MessageResponse {
+  payments: Payment[];
+}
+
+interface PaymentResponse extends MessageResponse {
+  payment: Payment;
+}
+
 interface AIPackagesResponse extends MessageResponse {
   packages: AIPackage[];
 }
@@ -443,6 +454,18 @@ interface NormalizedMixMatchTryOnResponse extends Omit<MixMatchTryOnResponse, "s
     top: Product;
     bottom: Product;
   };
+}
+
+interface ApiAIOutfitHistoryItem extends Omit<AIOutfitHistoryItem, "product"> {
+  product?: ApiProduct | null;
+}
+
+interface AIOutfitHistoryResponse extends MessageResponse {
+  recommendations: ApiAIOutfitHistoryItem[];
+}
+
+interface NormalizedAIOutfitHistoryResponse extends MessageResponse {
+  recommendations: AIOutfitHistoryItem[];
 }
 
 interface UploadImageResponse extends MessageResponse {
@@ -943,6 +966,22 @@ export const ordersApi = {
   },
 };
 
+export const paymentsApi = {
+  getAll(params: { status?: PaymentStatus; provider?: Payment["provider"] } = {}) {
+    return request<PaymentsResponse>("/payments", {
+      auth: true,
+      params,
+    });
+  },
+  updateStatus(id: string, payload: { status: PaymentStatus; transactionNo?: string }) {
+    return request<PaymentResponse>(`/payments/${id}/status`, {
+      method: "PATCH",
+      auth: true,
+      body: payload,
+    });
+  },
+};
+
 export const aiPackageApi = {
   getPackages() {
     return request<AIPackagesResponse>("/ai-packages/packages");
@@ -982,6 +1021,13 @@ export const aiPackageApi = {
 };
 
 export const shippingApi = {
+  create(payload: { orderId: string; shippingMethod?: "standard" | "express" | "overnight" }) {
+    return request<ShippingResponse>("/shipping", {
+      method: "POST",
+      auth: true,
+      body: payload,
+    });
+  },
   getAll(status?: ShippingStatus) {
     return request<ShippingListResponse>("/shipping", {
       auth: true,
@@ -1065,6 +1111,19 @@ export const aiApi = {
       method: "POST",
       body: payload,
     });
+  },
+  async getMyTryOns() {
+    const response = await request<AIOutfitHistoryResponse>("/ai/try-ons/my", {
+      auth: true,
+    });
+
+    return {
+      ...response,
+      recommendations: response.recommendations.map((item) => ({
+        ...item,
+        product: item.product ? normalizeProduct(item.product) : null,
+      })),
+    } satisfies NormalizedAIOutfitHistoryResponse;
   },
   async createMixMatchTryOn(payload: MixMatchTryOnPayload) {
     const response = await optionalAuthRequest<MixMatchTryOnResponse>("/ai/mix-match/try-on", {

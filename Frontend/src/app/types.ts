@@ -103,6 +103,33 @@ export interface Order {
   updatedAt?: string;
 }
 
+export type PaymentStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "refunded"
+  | "PENDING"
+  | "PAID"
+  | "CANCELLED"
+  | "FAILED";
+
+export interface Payment {
+  _id: string;
+  order: string | Order;
+  user: string | Pick<UserProfile, "_id" | "username" | "email" | "phone">;
+  provider: "cod" | "momo" | "vnpay" | "bank_transfer" | "stripe" | "paypal" | "PAYOS";
+  orderCode?: number;
+  paymentLinkId?: string;
+  checkoutUrl?: string;
+  amount: number;
+  status: PaymentStatus;
+  transactionNo?: string;
+  transactionReference?: string;
+  paidAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export type ShippingStatus =
   | "pending"
   | "picked_up"
@@ -209,6 +236,28 @@ export interface AITransaction {
   transactionReference?: string;
   paidAt?: string | null;
   expiresAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AIOutfitHistoryItem {
+  _id: string;
+  user?: string | Pick<UserProfile, "_id" | "username" | "email" | "phone"> | null;
+  product?: Product | null;
+  provider?: string;
+  taskId?: string;
+  modelImageUrl: string;
+  clothingImageUrl: string;
+  resultImageUrl?: string;
+  clothType: "upper" | "lower" | "full_set" | "combo";
+  hdMode?: boolean;
+  status: "CREATED" | "PROCESSING" | "COMPLETED" | "FAILED";
+  progress?: number;
+  error?: string;
+  rawResponse?: {
+    lowerClothingImageUrl?: string;
+    [key: string]: unknown;
+  } | null;
   createdAt?: string;
   updatedAt?: string;
 }
