@@ -6,6 +6,15 @@ import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 import { getErrorMessage } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
+import type { UserRole } from "../types";
+
+function getRoleDashboardPath(role: UserRole) {
+  if (role === "admin") return "/admin";
+  if (role === "manager") return "/manager";
+  if (role === "staff") return "/staff";
+  if (role === "shipper") return "/shipper";
+  return null;
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -35,25 +44,18 @@ export function LoginPage() {
 
       toast.success("Đăng nhập thành công");
 
+      const dashboardPath = getRoleDashboardPath(session.profile.role);
+      if (dashboardPath) {
+        navigate(dashboardPath, { replace: true });
+        return;
+      }
+
       if (redirectTo && redirectTo !== "/login") {
         navigate(redirectTo, { replace: true });
         return;
       }
 
-      navigate(
-        session.profile.role === "admin"
-          ? "/admin"
-          : session.profile.role === "manager"
-            ? "/manager"
-            : session.profile.role === "staff"
-              ? "/staff"
-          : session.profile.role === "shipper"
-            ? "/shipper"
-            : "/",
-        {
-          replace: true,
-        },
-      );
+      navigate("/", { replace: true });
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {

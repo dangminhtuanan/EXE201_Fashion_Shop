@@ -367,6 +367,58 @@ interface PaymentResponse extends MessageResponse {
   payment: Payment;
 }
 
+export interface RevenueReportParams {
+  from?: string;
+  to?: string;
+  groupBy?: "day" | "month" | "year";
+  timezone?: string;
+  limitTopProducts?: number;
+  limitRecentOrders?: number;
+}
+
+export interface RevenueReportResponse extends MessageResponse {
+  filters: {
+    from: string | null;
+    to: string | null;
+    groupBy: "day" | "month" | "year";
+    timezone: string;
+  };
+  summary: {
+    totalRevenue: number;
+    subtotal: number;
+    tax: number;
+    shippingFee: number;
+    orderCount: number;
+    itemCount: number;
+    averageOrderValue: number;
+  };
+  timeline: Array<{
+    period: string;
+    revenue: number;
+    orderCount: number;
+  }>;
+  revenueByStatus: Array<{
+    status: Order["status"];
+    revenue: number;
+    orderCount: number;
+  }>;
+  revenueByPaymentStatus: Array<{
+    paymentStatus: Order["paymentStatus"];
+    totalAmount: number;
+    orderCount: number;
+  }>;
+  topProducts: Array<{
+    product: string;
+    name: string;
+    quantity: number;
+    revenue: number;
+    orderCount: number;
+  }>;
+  recentOrders: Array<Order & {
+    user?: Pick<UserProfile, "_id" | "username" | "email" | "phone">;
+  }>;
+}
+
 interface AIPackagesResponse extends MessageResponse {
   packages: AIPackage[];
 }
@@ -982,6 +1034,15 @@ export const paymentsApi = {
   },
 };
 
+export const reportsApi = {
+  getRevenue(params: RevenueReportParams = {}) {
+    return request<RevenueReportResponse>("/reports/revenue", {
+      auth: true,
+      params,
+    });
+  },
+};
+
 export const aiPackageApi = {
   getPackages() {
     return request<AIPackagesResponse>("/ai-packages/packages");
@@ -1068,6 +1129,19 @@ export const reviewsApi = {
       method: "POST",
       auth: true,
       body: payload,
+    });
+  },
+  update(id: string, payload: Pick<CreateReviewPayload, "rating" | "comment">) {
+    return request<ReviewResponse>(`/reviews/${id}`, {
+      method: "PUT",
+      auth: true,
+      body: payload,
+    });
+  },
+  remove(id: string) {
+    return request<MessageResponse>(`/reviews/${id}`, {
+      method: "DELETE",
+      auth: true,
     });
   },
 };

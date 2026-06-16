@@ -12,6 +12,21 @@ import {
   Users,
 } from "lucide-react";
 import { useNavigate } from "react-router";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -37,9 +52,11 @@ import {
   ordersApi,
   paymentsApi,
   productsApi,
+  reportsApi,
   shippingApi,
   usersApi,
 } from "../lib/api";
+import type { RevenueReportResponse } from "../lib/api";
 import type {
   Order,
   Payment,
@@ -50,11 +67,12 @@ import type {
   UserProfile,
 } from "../types";
 
-type ManagerSection = "overview" | "orders" | "payments" | "shipping" | "products" | "users";
+type ManagerSection = "overview" | "reports" | "orders" | "payments" | "shipping" | "products" | "users";
 type ManagerOrder = Order & { user?: Pick<UserProfile, "_id" | "username" | "email" | "phone"> };
 
 const sections = [
   { id: "overview", label: "Tong quan", icon: LayoutDashboard },
+  { id: "reports", label: "Thong ke", icon: BadgeCheck },
   { id: "orders", label: "Orders", icon: ClipboardList },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "shipping", label: "Shipping", icon: Truck },
@@ -104,6 +122,15 @@ const shippingStatuses: ShippingStatus[] = [
 
 const editableShippingStatuses = shippingStatuses.filter((status) => status !== "cancelled");
 
+const reportRanges = [
+  { value: "7", label: "7 ngay" },
+  { value: "30", label: "30 ngay" },
+  { value: "90", label: "90 ngay" },
+  { value: "365", label: "12 thang" },
+];
+
+const chartColors = ["#0f172a", "#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed"];
+
 function money(value?: number) {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -114,6 +141,28 @@ function money(value?: number) {
 
 function dateTime(value?: string | null) {
   return value ? new Date(value).toLocaleString("vi-VN") : "--";
+}
+
+function getDateRange(days: string) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - (Number(days) - 1));
+
+  return {
+    from: start.toISOString().slice(0, 10),
+    to: end.toISOString().slice(0, 10),
+  };
+}
+
+function compactMoney(value?: number) {
+  return new Intl.NumberFormat("vi-VN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value || 0);
+}
+
+function shortLabel(value: string, maxLength = 20) {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
 }
 
 function isFinalShippingStatus(status: ShippingStatus) {
@@ -130,12 +179,16 @@ export function ManagerDashboardPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [shipments, setShipments] = useState<ShippingRecord[]>([]);
+  const [revenueReport, setRevenueReport] = useState<RevenueReportResponse | null>(null);
 
   const [search, setSearch] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
   const [shippingStatusFilter, setShippingStatusFilter] = useState("");
+  const [reportRange, setReportRange] = useState("30");
+  const [reportGroupBy, setReportGroupBy] = useState<"day" | "month" | "year">("day");
   const [loading, setLoading] = useState(true);
+  const [loadingReport, setLoadingReport] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const loadData = async () => {
@@ -162,9 +215,32 @@ export function ManagerDashboardPage() {
     }
   };
 
+  const loadRevenueReport = async () => {
+    setLoadingReport(true);
+    try {
+      const range = getDateRange(reportRange);
+      const response = await reportsApi.getRevenue({
+        ...range,
+        groupBy: reportGroupBy,
+        timezone: "Asia/Ho_Chi_Minh",
+        limitTopProducts: 8,
+        limitRecentOrders: 8,
+      });
+      setRevenueReport(response);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
   useEffect(() => {
-    void loadData();
+    void Promise.all([loadData(), loadRevenueReport()]);
   }, [orderStatusFilter, paymentStatusFilter, shippingStatusFilter]);
+
+  useEffect(() => {
+    void loadRevenueReport();
+  }, [reportRange, reportGroupBy]);
 
   const stats = useMemo(
     () => ({
@@ -175,11 +251,11 @@ export function ManagerDashboardPage() {
       shipments: shipments.length,
       activeShipments: shipments.filter((item) => !isFinalShippingStatus(item.shippingStatus)).length,
       lowStock: products.filter((item) => (item.stock || 0) <= 5).length,
-      revenue: payments
+      revenue: revenueReport?.summary.totalRevenue ?? payments
         .filter((item) => ["paid", "PAID"].includes(item.status))
         .reduce((total, item) => total + item.amount, 0),
     }),
-    [orders, payments, products, shipments, users],
+    [orders, payments, products, revenueReport, shipments, users],
   );
 
   const keyword = search.trim().toLowerCase();
@@ -370,7 +446,7 @@ export function ManagerDashboardPage() {
               <StatCard title="Revenue" value={money(stats.revenue)} icon={BadgeCheck} />
             </div>
 
-            {activeSection !== "overview" && (
+            {activeSection !== "overview" && activeSection !== "reports" && (
               <div className="mb-4 flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
                 <div className="relative w-full xl:w-96">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -423,6 +499,20 @@ export function ManagerDashboardPage() {
                 <RecentPayments payments={payments.slice(0, 6)} loading={loading} />
                 <ActiveShipments shipments={shipments.filter((item) => !isFinalShippingStatus(item.shippingStatus)).slice(0, 6)} loading={loading} />
               </div>
+            )}
+
+            {activeSection === "reports" && (
+              <ManagerReportPanel
+                report={revenueReport}
+                orders={orders}
+                shipments={shipments}
+                loading={loadingReport}
+                range={reportRange}
+                groupBy={reportGroupBy}
+                onRangeChange={setReportRange}
+                onGroupByChange={setReportGroupBy}
+                onRefresh={() => void loadRevenueReport()}
+              />
             )}
 
             {activeSection === "orders" && (
@@ -664,6 +754,273 @@ function StatCard({
       <CardContent>
         <CardTitle className="text-2xl">{value}</CardTitle>
         {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ManagerReportPanel({
+  report,
+  orders,
+  shipments,
+  loading,
+  range,
+  groupBy,
+  onRangeChange,
+  onGroupByChange,
+  onRefresh,
+}: {
+  report: RevenueReportResponse | null;
+  orders: ManagerOrder[];
+  shipments: ShippingRecord[];
+  loading: boolean;
+  range: string;
+  groupBy: "day" | "month" | "year";
+  onRangeChange: (value: string) => void;
+  onGroupByChange: (value: "day" | "month" | "year") => void;
+  onRefresh: () => void;
+}) {
+  const timeline = report?.timeline || [];
+  const topProducts = (report?.topProducts || []).map((item) => ({
+    ...item,
+    label: shortLabel(item.name, 22),
+  }));
+  const orderStatusData = Object.entries(
+    orders.reduce<Record<string, number>>((result, order) => {
+      result[order.status] = (result[order.status] || 0) + 1;
+      return result;
+    }, {}),
+  ).map(([status, count]) => ({ status, count }));
+  const shippingStatusData = Object.entries(
+    shipments.reduce<Record<string, number>>((result, shipment) => {
+      result[shipment.shippingStatus] = (result[shipment.shippingStatus] || 0) + 1;
+      return result;
+    }, {}),
+  ).map(([status, count]) => ({ status, count }));
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="gap-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <CardTitle>Thong ke van hanh manager</CardTitle>
+              <CardDescription>Doanh thu, don hang, san pham va shipping can theo doi</CardDescription>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select value={range} onChange={(event) => onRangeChange(event.target.value)} className="h-9 rounded-md border bg-white px-3 text-sm">
+                {reportRanges.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              <select value={groupBy} onChange={(event) => onGroupByChange(event.target.value as "day" | "month" | "year")} className="h-9 rounded-md border bg-white px-3 text-sm">
+                <option value="day">Theo ngay</option>
+                <option value="month">Theo thang</option>
+                <option value="year">Theo nam</option>
+              </select>
+              <Button variant="outline" onClick={onRefresh}>
+                <RefreshCcw className="h-4 w-4" />
+                Lam moi
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-4">
+            <ReportMetric label="Doanh thu" value={money(report?.summary.totalRevenue)} loading={loading} />
+            <ReportMetric label="Don da thanh toan" value={report?.summary.orderCount ?? 0} loading={loading} />
+            <ReportMetric label="San pham da ban" value={report?.summary.itemCount ?? 0} loading={loading} />
+            <ReportMetric label="Gia tri don TB" value={money(report?.summary.averageOrderValue)} loading={loading} />
+          </div>
+
+          <div className="mt-6 h-80">
+            {loading ? (
+              <ChartLoading />
+            ) : timeline.length === 0 ? (
+              <ChartEmpty text="Chua co du lieu doanh thu" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={timeline} margin={{ top: 10, right: 18, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="period" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis yAxisId="revenue" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => compactMoney(Number(value))} width={70} />
+                  <YAxis yAxisId="orders" orientation="right" tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} width={42} />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      name === "revenue" ? money(Number(value)) : value,
+                      name === "revenue" ? "Doanh thu" : "So don",
+                    ]}
+                    labelFormatter={(label) => `Ky: ${label}`}
+                  />
+                  <Legend formatter={(value) => (value === "revenue" ? "Doanh thu" : "So don")} />
+                  <Line yAxisId="revenue" type="monotone" dataKey="revenue" name="revenue" stroke="#0f172a" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  <Line yAxisId="orders" type="monotone" dataKey="orderCount" name="orderCount" stroke="#2563eb" strokeWidth={2} dot={{ r: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <CardHeader>
+            <CardTitle>Top san pham tao doanh thu</CardTitle>
+            <CardDescription>Uu tien xem de quyet dinh ton kho va campaign</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              {loading ? (
+                <ChartLoading />
+              ) : topProducts.length === 0 ? (
+                <ChartEmpty text="Chua co san pham tao doanh thu" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topProducts} layout="vertical" margin={{ top: 0, right: 24, bottom: 0, left: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                    <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => compactMoney(Number(value))} />
+                    <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} fontSize={12} width={150} />
+                    <Tooltip formatter={(value) => [money(Number(value)), "Doanh thu"]} labelFormatter={(_, payload) => payload?.[0]?.payload?.name || "San pham"} />
+                    <Bar dataKey="revenue" radius={[0, 6, 6, 0]}>
+                      {topProducts.map((item, index) => (
+                        <Cell key={item.product || item.name} fill={chartColors[index % chartColors.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <ManagerPieCard
+          title="Co cau thanh toan"
+          description="Ty trong so don theo paymentStatus"
+          data={report?.revenueByPaymentStatus || []}
+          loading={loading}
+          dataKey="orderCount"
+          nameKey="paymentStatus"
+          emptyText="Chua co du lieu thanh toan"
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ManagerPieCard
+          title="Trang thai don hang"
+          description="Ty trong order theo status hien tai"
+          data={orderStatusData}
+          loading={loading}
+          dataKey="count"
+          nameKey="status"
+          emptyText="Chua co du lieu order"
+        />
+        <ManagerPieCard
+          title="Trang thai giao hang"
+          description="Theo doi shipping dang bi tac hoac da hoan tat"
+          data={shippingStatusData}
+          loading={loading}
+          dataKey="count"
+          nameKey="status"
+          emptyText="Chua co du lieu shipping"
+        />
+        <ManagerPieCard
+          title="Co cau doanh thu"
+          description="Ty trong doanh thu theo trang thai don"
+          data={report?.revenueByStatus || []}
+          loading={loading}
+          dataKey="revenue"
+          nameKey="status"
+          emptyText="Chua co du lieu doanh thu"
+          valueFormatter={(value) => money(Number(value))}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ReportMetric({ label, value, loading }: { label: string; value: number | string; loading: boolean }) {
+  return (
+    <div className="rounded-md border bg-slate-50 p-3">
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-bold text-slate-950">{loading ? "..." : value}</p>
+    </div>
+  );
+}
+
+function ChartLoading() {
+  return (
+    <div className="flex h-full items-center justify-center rounded-md border border-dashed text-sm text-slate-500">
+      Dang tai bieu do...
+    </div>
+  );
+}
+
+function ChartEmpty({ text }: { text: string }) {
+  return (
+    <div className="flex h-full items-center justify-center rounded-md border border-dashed text-center text-sm text-slate-500">
+      {text}
+    </div>
+  );
+}
+
+function ManagerPieCard({
+  title,
+  description,
+  data,
+  loading,
+  dataKey,
+  nameKey,
+  emptyText,
+  valueFormatter,
+}: {
+  title: string;
+  description: string;
+  data: Array<Record<string, unknown>>;
+  loading: boolean;
+  dataKey: string;
+  nameKey: string;
+  emptyText: string;
+  valueFormatter?: (value: unknown) => string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-72">
+          {loading ? (
+            <ChartLoading />
+          ) : data.length === 0 ? (
+            <ChartEmpty text={emptyText} />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Tooltip
+                  formatter={(value, _, item) => [
+                    valueFormatter ? valueFormatter(value) : value,
+                    String(item.payload[nameKey] || ""),
+                  ]}
+                />
+                <Legend />
+                <Pie
+                  data={data}
+                  dataKey={dataKey}
+                  nameKey={nameKey}
+                  cx="50%"
+                  cy="44%"
+                  outerRadius={86}
+                  innerRadius={44}
+                  paddingAngle={3}
+                  label={(entry) => `${entry[nameKey]} ${(entry.percent * 100).toFixed(0)}%`}
+                >
+                  {data.map((item, index) => (
+                    <Cell key={String(item[nameKey] || index)} fill={chartColors[index % chartColors.length]} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

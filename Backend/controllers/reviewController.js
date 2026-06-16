@@ -1,7 +1,15 @@
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const Review = require("../models/Review");
-const { isStaffRole } = require("../middleware/roleMiddleware");
+
+function isReviewOwner(req, review) {
+  return req.user?.role === "user" && String(review.user) === String(req.user.id);
+}
+
+function isValidRating(rating) {
+  const value = Number(rating);
+  return Number.isInteger(value) && value >= 1 && value <= 5;
+}
 
 async function updateProductRating(productId) {
   const stats = await Review.aggregate([
@@ -48,8 +56,16 @@ exports.createReview = async (req, res) => {
   try {
     const { productId, rating, comment = "", orderId = null } = req.body;
 
+    if (req.user?.role !== "user") {
+      return res.status(403).json({ message: "Only users can review products" });
+    }
+
     if (!productId || !rating) {
       return res.status(400).json({ message: "Product and rating are required" });
+    }
+
+    if (!isValidRating(rating)) {
+      return res.status(400).json({ message: "Rating must be an integer from 1 to 5" });
     }
 
     const product = await Product.findOne({ _id: productId, isActive: true });
@@ -93,15 +109,17 @@ exports.updateReview = async (req, res) => {
       return res.status(404).json({ message: "Review not found" });
     }
 
-    if (!isStaffRole(req.user?.role) && String(review.user) !== String(req.user.id)) {
+    if (!isReviewOwner(req, review)) {
       return res.status(403).json({ message: "Permission denied" });
     }
 
-    if (req.body.rating !== undefined) review.rating = Number(req.body.rating);
-    if (req.body.comment !== undefined) review.comment = req.body.comment;
-    if (req.body.isVisible !== undefined && isStaffRole(req.user?.role)) {
-      review.isVisible = Boolean(req.body.isVisible);
+    if (req.body.rating !== undefined) {
+      if (!isValidRating(req.body.rating)) {
+        return res.status(400).json({ message: "Rating must be an integer from 1 to 5" });
+      }
+      review.rating = Number(req.body.rating);
     }
+    if (req.body.comment !== undefined) review.comment = req.body.comment;
 
     await review.save();
     await updateProductRating(review.product);
@@ -121,7 +139,7 @@ exports.deleteReview = async (req, res) => {
       return res.status(404).json({ message: "Review not found" });
     }
 
-    if (!isStaffRole(req.user?.role) && String(review.user) !== String(req.user.id)) {
+    if (!isReviewOwner(req, review)) {
       return res.status(403).json({ message: "Permission denied" });
     }
 

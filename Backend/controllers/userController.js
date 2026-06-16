@@ -3,7 +3,7 @@ const validator = require("validator");
 const bcrypt = require("bcryptjs");
 const { getNormalizedEmail } = require("./authController");
 
-const USER_ROLES = ["user", "customer", "staff", "manager", "admin"];
+const USER_ROLES = ["user", "customer", "staff", "manager", "admin", "shipper"];
 
 function getDuplicateFieldMessage(error) {
   if (error?.code !== 11000 || !error.keyPattern) return null;

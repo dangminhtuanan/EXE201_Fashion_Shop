@@ -17,6 +17,21 @@ import {
   Users,
 } from "lucide-react";
 import { useNavigate } from "react-router";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -53,12 +68,14 @@ import {
   ordersApi,
   paymentsApi,
   productsApi,
+  reportsApi,
   shippingApi,
   usersApi,
 } from "../lib/api";
 import type { Category, Order, Payment, PaymentStatus, Product, ShippingRecord, ShippingStatus, UserProfile, UserRole } from "../types";
+import type { RevenueReportResponse } from "../lib/api";
 
-type AdminSection = "overview" | "users" | "orders" | "payments" | "shipping" | "products";
+type AdminSection = "overview" | "reports" | "users" | "orders" | "payments" | "shipping" | "products";
 type AdminOrder = Order & { user?: Pick<UserProfile, "_id" | "username" | "email" | "phone"> };
 
 interface UserFormData {
@@ -157,8 +174,18 @@ const shippingStatuses: ShippingStatus[] = [
   "cancelled",
 ];
 
+const revenueRangeOptions = [
+  { value: "7", label: "7 ngày" },
+  { value: "30", label: "30 ngày" },
+  { value: "90", label: "90 ngày" },
+  { value: "365", label: "12 tháng" },
+];
+
+const chartColors = ["#0f172a", "#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed"];
+
 const sections = [
   { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
+  { id: "reports", label: "Thống kê", icon: BadgeCheck },
   { id: "users", label: "Quản lý user", icon: Users },
   { id: "orders", label: "Quản lý order", icon: ClipboardList },
   { id: "payments", label: "Payments", icon: CreditCard },
@@ -185,6 +212,29 @@ function splitCsv(value: string) {
     .filter(Boolean);
 }
 
+function getDateRange(days: string) {
+  const end = new Date();
+  const start = new Date();
+
+  start.setDate(end.getDate() - (Number(days) - 1));
+
+  return {
+    from: start.toISOString().slice(0, 10),
+    to: end.toISOString().slice(0, 10),
+  };
+}
+
+function compactMoney(value?: number) {
+  return new Intl.NumberFormat("vi-VN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value || 0);
+}
+
+function shortLabel(value: string, maxLength = 18) {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
+}
+
 export function AdminDashboardPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -196,6 +246,7 @@ export function AdminDashboardPage() {
   const [shippings, setShippings] = useState<ShippingRecord[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [revenueReport, setRevenueReport] = useState<RevenueReportResponse | null>(null);
 
   const [userSearch, setUserSearch] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
@@ -205,12 +256,15 @@ export function AdminDashboardPage() {
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
   const [shippingStatusFilter, setShippingStatusFilter] = useState("");
+  const [revenueRange, setRevenueRange] = useState("30");
+  const [revenueGroupBy, setRevenueGroupBy] = useState<"day" | "month" | "year">("day");
 
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loadingShippings, setLoadingShippings] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingRevenue, setLoadingRevenue] = useState(true);
 
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -291,8 +345,34 @@ export function AdminDashboardPage() {
     }
   };
 
+  const loadRevenueReport = async () => {
+    setLoadingRevenue(true);
+    try {
+      const range = getDateRange(revenueRange);
+      const response = await reportsApi.getRevenue({
+        ...range,
+        groupBy: revenueGroupBy,
+        timezone: "Asia/Ho_Chi_Minh",
+        limitTopProducts: 6,
+        limitRecentOrders: 6,
+      });
+      setRevenueReport(response);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setLoadingRevenue(false);
+    }
+  };
+
   useEffect(() => {
-    void Promise.all([loadUsers(), loadOrders(), loadPayments(), loadShippings(), loadProducts()]);
+    void Promise.all([
+      loadUsers(),
+      loadOrders(),
+      loadPayments(),
+      loadShippings(),
+      loadProducts(),
+      loadRevenueReport(),
+    ]);
   }, []);
 
   useEffect(() => {
@@ -306,6 +386,10 @@ export function AdminDashboardPage() {
   useEffect(() => {
     void loadShippings();
   }, [shippingStatusFilter]);
+
+  useEffect(() => {
+    void loadRevenueReport();
+  }, [revenueRange, revenueGroupBy]);
 
   const stats = useMemo(() => {
     const revenue = orders
@@ -323,9 +407,9 @@ export function AdminDashboardPage() {
       activeShippings: shippings.filter((item) => !["delivered", "failed", "returned", "cancelled"].includes(item.shippingStatus)).length,
       products: products.length,
       lowStock: products.filter((item) => (item.stock || 0) <= 5).length,
-      revenue,
+      revenue: revenueReport?.summary.totalRevenue ?? revenue,
     };
-  }, [orders, payments, products, shippings, users]);
+  }, [orders, payments, products, revenueReport, shippings, users]);
 
   const filteredUsers = users.filter((item) => {
     const keyword = userSearch.trim().toLowerCase();
@@ -657,6 +741,27 @@ export function AdminDashboardPage() {
               <div className="grid gap-4 xl:grid-cols-2">
                 <RecentOrders orders={orders.slice(0, 6)} loading={loadingOrders} />
                 <LowStockProducts products={products.filter((item) => (item.stock || 0) <= 5).slice(0, 6)} loading={loadingProducts} />
+              </div>
+            )}
+
+            {activeSection === "reports" && (
+              <div className="space-y-4">
+                <RevenueReportPanel
+                  report={revenueReport}
+                  loading={loadingRevenue}
+                  range={revenueRange}
+                  groupBy={revenueGroupBy}
+                  onRangeChange={setRevenueRange}
+                  onGroupByChange={setRevenueGroupBy}
+                  onRefresh={() => void loadRevenueReport()}
+                />
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <RecentOrders
+                    orders={(revenueReport?.recentOrders as AdminOrder[] | undefined) || orders.slice(0, 6)}
+                    loading={loadingRevenue || loadingOrders}
+                  />
+                  <RevenueStatusBreakdown report={revenueReport} loading={loadingRevenue} />
+                </div>
               </div>
             )}
 
@@ -1066,6 +1171,436 @@ function StatCard({
       <CardContent>
         <CardTitle className="text-2xl">{value}</CardTitle>
         <p className="mt-1 text-sm text-slate-500">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RevenueReportPanel({
+  report,
+  loading,
+  range,
+  groupBy,
+  onRangeChange,
+  onGroupByChange,
+  onRefresh,
+}: {
+  report: RevenueReportResponse | null;
+  loading: boolean;
+  range: string;
+  groupBy: "day" | "month" | "year";
+  onRangeChange: (value: string) => void;
+  onGroupByChange: (value: "day" | "month" | "year") => void;
+  onRefresh: () => void;
+}) {
+  const timeline = report?.timeline || [];
+  const topProducts = (report?.topProducts || []).map((item) => ({
+    ...item,
+    label: shortLabel(item.name, 22),
+  }));
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="gap-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <CardTitle>Báo cáo doanh thu</CardTitle>
+              <CardDescription>
+                Dữ liệu từ API /reports/revenue dành cho admin và manager
+              </CardDescription>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select
+                value={range}
+                onChange={(event) => onRangeChange(event.target.value)}
+                className="h-9 rounded-md border bg-white px-3 text-sm"
+              >
+                {revenueRangeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={groupBy}
+                onChange={(event) => onGroupByChange(event.target.value as "day" | "month" | "year")}
+                className="h-9 rounded-md border bg-white px-3 text-sm"
+              >
+                <option value="day">Theo ngày</option>
+                <option value="month">Theo tháng</option>
+                <option value="year">Theo năm</option>
+              </select>
+              <Button variant="outline" onClick={onRefresh}>
+                <RefreshCcw className="h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-4">
+            <MiniMetric
+              label="Doanh thu"
+              value={money(report?.summary.totalRevenue)}
+              loading={loading}
+            />
+            <MiniMetric
+              label="Số đơn đã ghi nhận"
+              value={report?.summary.orderCount ?? 0}
+              loading={loading}
+            />
+            <MiniMetric
+              label="Sản phẩm đã bán"
+              value={report?.summary.itemCount ?? 0}
+              loading={loading}
+            />
+            <MiniMetric
+              label="Giá trị đơn TB"
+              value={money(report?.summary.averageOrderValue)}
+              loading={loading}
+            />
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-slate-600">
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-sm bg-slate-950" />
+              Doanh thu
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-sm bg-blue-600" />
+              So don
+            </div>
+          </div>
+
+          <div className="mt-3 h-80">
+            {loading ? (
+              <ChartLoading />
+            ) : timeline.length === 0 ? (
+              <ChartEmpty text="Chưa có dữ liệu doanh thu trong khoảng đã chọn" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={timeline} margin={{ top: 10, right: 18, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="period" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis
+                    yAxisId="revenue"
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={12}
+                    tickFormatter={(value) => compactMoney(Number(value))}
+                    width={70}
+                  />
+                  <YAxis
+                    yAxisId="orders"
+                    orientation="right"
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={12}
+                    allowDecimals={false}
+                    width={42}
+                  />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      name === "revenue" ? money(Number(value)) : value,
+                      name === "revenue" ? "Doanh thu" : "Số đơn",
+                    ]}
+                    labelFormatter={(label) => `Kỳ: ${label}`}
+                  />
+                  <Legend
+                    verticalAlign="top"
+                    height={28}
+                    formatter={(value) => (value === "revenue" ? "Doanh thu" : "So don")}
+                  />
+                  <Line
+                    yAxisId="revenue"
+                    type="monotone"
+                    dataKey="revenue"
+                    name="revenue"
+                    stroke="#0f172a"
+                    strokeWidth={3}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line
+                    yAxisId="orders"
+                    type="monotone"
+                    dataKey="orderCount"
+                    name="orderCount"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <CardHeader>
+            <CardTitle>Top sản phẩm theo doanh thu</CardTitle>
+            <CardDescription>Sắp xếp theo doanh thu từ đơn đã thanh toán</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              {loading ? (
+                <ChartLoading />
+              ) : topProducts.length === 0 ? (
+                <ChartEmpty text="Chưa có sản phẩm phát sinh doanh thu" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topProducts} layout="vertical" margin={{ top: 0, right: 24, bottom: 0, left: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                    <XAxis
+                      type="number"
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={12}
+                      tickFormatter={(value) => compactMoney(Number(value))}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={12}
+                      width={150}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        name === "revenue" ? money(Number(value)) : value,
+                        name === "revenue" ? "Doanh thu" : "Số lượng",
+                      ]}
+                    />
+                    <Legend formatter={() => "Doanh thu"} />
+                    <Bar dataKey="revenue" radius={[0, 6, 6, 0]}>
+                      {topProducts.map((item, index) => (
+                        <Cell key={item.product || item.name} fill={chartColors[index % chartColors.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Cơ cấu thanh toán</CardTitle>
+            <CardDescription>Đếm đơn theo paymentStatus</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loading ? (
+              <p className="text-sm text-slate-500">Đang tải...</p>
+            ) : !report?.revenueByPaymentStatus.length ? (
+              <p className="text-sm text-slate-500">Chưa có dữ liệu thanh toán</p>
+            ) : (
+              report.revenueByPaymentStatus.map((item) => (
+                <div key={item.paymentStatus} className="rounded-md border p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Badge variant={item.paymentStatus === "paid" ? "default" : "secondary"}>
+                      {item.paymentStatus}
+                    </Badge>
+                    <span className="text-sm font-semibold">{item.orderCount} đơn</span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-500">{money(item.totalAmount)}</p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <PaymentStatusPie report={report} loading={loading} />
+        <RevenueStatusPie report={report} loading={loading} />
+      </div>
+    </div>
+  );
+}
+
+function MiniMetric({
+  label,
+  value,
+  loading,
+}: {
+  label: string;
+  value: number | string;
+  loading: boolean;
+}) {
+  return (
+    <div className="rounded-md border bg-slate-50 p-3">
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-bold text-slate-950">
+        {loading ? "..." : value}
+      </p>
+    </div>
+  );
+}
+
+function ChartLoading() {
+  return (
+    <div className="flex h-full items-center justify-center rounded-md border border-dashed text-sm text-slate-500">
+      Đang tải biểu đồ...
+    </div>
+  );
+}
+
+function ChartEmpty({ text }: { text: string }) {
+  return (
+    <div className="flex h-full items-center justify-center rounded-md border border-dashed text-center text-sm text-slate-500">
+      {text}
+    </div>
+  );
+}
+
+function PaymentStatusPie({
+  report,
+  loading,
+}: {
+  report: RevenueReportResponse | null;
+  loading: boolean;
+}) {
+  const data = report?.revenueByPaymentStatus || [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sơ đồ tròn thanh toán</CardTitle>
+        <CardDescription>Tỷ trọng số đơn theo paymentStatus</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-80">
+          {loading ? (
+            <ChartLoading />
+          ) : data.length === 0 ? (
+            <ChartEmpty text="Chưa có dữ liệu thanh toán" />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Tooltip
+                  formatter={(value, name, item) => [
+                    `${value} đơn - ${money(item.payload.totalAmount)}`,
+                    item.payload.paymentStatus,
+                  ]}
+                />
+                <Legend />
+                <Pie
+                  data={data}
+                  dataKey="orderCount"
+                  nameKey="paymentStatus"
+                  cx="50%"
+                  cy="45%"
+                  outerRadius={92}
+                  innerRadius={48}
+                  paddingAngle={3}
+                  label={({ paymentStatus, percent }) =>
+                    `${paymentStatus} ${(percent * 100).toFixed(0)}%`
+                  }
+                >
+                  {data.map((item, index) => (
+                    <Cell key={item.paymentStatus} fill={chartColors[index % chartColors.length]} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RevenueStatusPie({
+  report,
+  loading,
+}: {
+  report: RevenueReportResponse | null;
+  loading: boolean;
+}) {
+  const data = report?.revenueByStatus || [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sơ đồ tròn doanh thu</CardTitle>
+        <CardDescription>Tỷ trọng doanh thu theo trạng thái đơn</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-80">
+          {loading ? (
+            <ChartLoading />
+          ) : data.length === 0 ? (
+            <ChartEmpty text="Chưa có dữ liệu doanh thu theo trạng thái" />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Tooltip
+                  formatter={(value, name, item) => [
+                    `${money(Number(value))} - ${item.payload.orderCount} đơn`,
+                    item.payload.status,
+                  ]}
+                />
+                <Legend />
+                <Pie
+                  data={data}
+                  dataKey="revenue"
+                  nameKey="status"
+                  cx="50%"
+                  cy="45%"
+                  outerRadius={92}
+                  innerRadius={48}
+                  paddingAngle={3}
+                  label={({ status, percent }) =>
+                    `${status} ${(percent * 100).toFixed(0)}%`
+                  }
+                >
+                  {data.map((item, index) => (
+                    <Cell key={item.status} fill={chartColors[index % chartColors.length]} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RevenueStatusBreakdown({
+  report,
+  loading,
+}: {
+  report: RevenueReportResponse | null;
+  loading: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Doanh thu theo trạng thái đơn</CardTitle>
+        <CardDescription>Các trạng thái được tính trong báo cáo doanh thu</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading ? (
+          <p className="text-sm text-slate-500">Đang tải...</p>
+        ) : !report?.revenueByStatus.length ? (
+          <p className="text-sm text-slate-500">Chưa có dữ liệu trạng thái đơn</p>
+        ) : (
+          report.revenueByStatus.map((item) => (
+            <div key={item.status} className="rounded-md border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <Badge variant="secondary">{item.status}</Badge>
+                <span className="text-sm font-semibold">{item.orderCount} đơn</span>
+              </div>
+              <p className="mt-2 text-sm text-slate-500">{money(item.revenue)}</p>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   );

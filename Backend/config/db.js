@@ -1,37 +1,52 @@
 const dns = require("dns");
-const mongoose = require("mongoose"); 
+const mongoose = require("mongoose");
+
+let connectionPromise = null;
 
 const connectDB = async () => {
-  try {
-    const mongoUri =
-      process.env.MONGO_URI ||
-      process.env.MONGODB_URI ||
-      (process.env.NODE_ENV === "production"
-        ? undefined
-        : "mongodb://127.0.0.1:27017/exe201_fashion_shop");
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
 
-    if (!mongoUri) {
-      throw new Error("Thieu MONGO_URI trong file Backend/.env");
-    }
+  if (connectionPromise) {
+    return connectionPromise;
+  }
 
-    if (mongoUri.startsWith("mongodb+srv://") && process.env.DNS_SERVERS) {
-      dns.setServers(
-        process.env.DNS_SERVERS.split(",")
-          .map((server) => server.trim())
-          .filter(Boolean)
-      );
-    }
+  const mongoUri =
+    process.env.MONGO_URI ||
+    process.env.MONGODB_URI ||
+    (process.env.NODE_ENV === "production"
+      ? undefined
+      : "mongodb://127.0.0.1:27017/exe201_fashion_shop");
 
-    await mongoose.connect(mongoUri, {
+  if (!mongoUri) {
+    throw new Error("Missing MONGO_URI or MONGODB_URI");
+  }
+
+  if (mongoUri.startsWith("mongodb+srv://") && process.env.DNS_SERVERS) {
+    dns.setServers(
+      process.env.DNS_SERVERS.split(",")
+        .map((server) => server.trim())
+        .filter(Boolean),
+    );
+  }
+
+  connectionPromise = mongoose
+    .connect(mongoUri, {
       family: 4,
       serverSelectionTimeoutMS: 10000,
+    })
+    .then(() => {
+      console.log("MongoDB connected");
+      return mongoose.connection;
+    })
+    .catch((error) => {
+      connectionPromise = null;
+      console.error("MongoDB connection failed:", error.message);
+      throw error;
     });
 
-    console.log("MongoDB kết nối thành công");
-  } catch (error) {
-    console.error("MongoDB kết nối thất bại:", error.message);
-    process.exit(1); 
-  }
+  return connectionPromise;
 };
 
-module.exports = connectDB; 
+module.exports = connectDB;

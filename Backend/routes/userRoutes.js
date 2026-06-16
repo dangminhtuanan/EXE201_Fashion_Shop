@@ -85,7 +85,7 @@ router.get("/:id", managerOrAdmin, getUserById);
  *                 type: string
  *               role:
  *                 type: string
- *                 enum: [user, admin]
+ *                 enum: [user, customer, staff, manager, admin, shipper]
  *     responses:
  *       201:
  *         description: User đã được tạo
@@ -119,7 +119,7 @@ router.post("/", adminOnly, createUser);
  *                 type: string
  *               role:
  *                 type: string
- *                 enum: [user, admin]
+ *                 enum: [user, customer, staff, manager, admin, shipper]
  *     responses:
  *       200:
  *         description: User đã được cập nhật
