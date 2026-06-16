@@ -17,6 +17,7 @@ pnpm-debug.log*
 # Runtime and cache
 .cache/
 .vite/
+.vercel/
 coverage/
 
 # Build output
@@ -28,3 +29,5 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+
+.vercel
