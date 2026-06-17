@@ -186,11 +186,11 @@ const chartColors = ["#0f172a", "#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c
 const sections = [
   { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
   { id: "reports", label: "Thống kê", icon: BadgeCheck },
-  { id: "users", label: "Quản lý user", icon: Users },
-  { id: "orders", label: "Quản lý order", icon: ClipboardList },
-  { id: "payments", label: "Payments", icon: CreditCard },
-  { id: "shipping", label: "Shipping", icon: Truck },
-  { id: "products", label: "Quản lý product", icon: Boxes },
+  { id: "users", label: "Quản lý người dùng", icon: Users },
+  { id: "orders", label: "Quản lý đơn hàng", icon: ClipboardList },
+  { id: "payments", label: "Thanh toán", icon: CreditCard },
+  { id: "shipping", label: "Giao hàng", icon: Truck },
+  { id: "products", label: "Quản lý sản phẩm", icon: Boxes },
 ] satisfies Array<{ id: AdminSection; label: string; icon: typeof LayoutDashboard }>;
 
 function money(value?: number) {
@@ -492,7 +492,7 @@ export function AdminDashboardPage() {
           address: userForm.address.trim(),
         });
         setUsers((prev) => prev.map((item) => (item._id === editingUser._id ? response.user : item)));
-        toast.success("Cập nhật user thành công");
+        toast.success("Cập nhật người dùng thành công");
       } else {
         const response = await usersApi.create({
           username: userForm.username.trim(),
@@ -503,7 +503,7 @@ export function AdminDashboardPage() {
           address: userForm.address.trim(),
         });
         setUsers((prev) => [response.user, ...prev]);
-        toast.success("Tạo user thành công");
+        toast.success("Tạo người dùng thành công");
       }
 
       setIsUserDialogOpen(false);
@@ -515,12 +515,12 @@ export function AdminDashboardPage() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!window.confirm("Bạn có chắc muốn xóa hoặc vô hiệu hóa user này?")) return;
+    if (!window.confirm("Bạn có chắc muốn xóa hoặc vô hiệu hóa người dùng này?")) return;
 
     try {
       await usersApi.remove(userId);
       setUsers((prev) => prev.filter((item) => item._id !== userId));
-      toast.success("Đã xóa user");
+      toast.success("Đã xóa người dùng");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -534,7 +534,7 @@ export function AdminDashboardPage() {
     try {
       const response = await ordersApi.updateStatus(orderId, { [field]: value });
       setOrders((prev) => prev.map((item) => (item._id === orderId ? (response.order as AdminOrder) : item)));
-      toast.success("Cập nhật order thành công");
+      toast.success("Cập nhật đơn hàng thành công");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -545,7 +545,7 @@ export function AdminDashboardPage() {
       const response = await paymentsApi.updateStatus(paymentId, { status });
       setPayments((prev) => prev.map((item) => (item._id === paymentId ? response.payment : item)));
       void loadOrders();
-      toast.success("Cập nhật payment thành công");
+      toast.success("Cập nhật thanh toán thành công");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -556,7 +556,7 @@ export function AdminDashboardPage() {
       const response = await shippingApi.updateStatus(shippingId, { status });
       setShippings((prev) => prev.map((item) => (item._id === shippingId ? response.data : item)));
       void loadOrders();
-      toast.success("Cập nhật shipping thành công");
+      toast.success("Cập nhật giao hàng thành công");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -612,11 +612,11 @@ export function AdminDashboardPage() {
       if (editingProduct?._id) {
         const response = await productsApi.update(editingProduct._id, payload);
         setProducts((prev) => prev.map((item) => (item._id === editingProduct._id ? response.product : item)));
-        toast.success("Cập nhật product thành công");
+        toast.success("Cập nhật sản phẩm thành công");
       } else {
         const response = await productsApi.create(payload);
         setProducts((prev) => [response.product, ...prev]);
-        toast.success("Tạo product thành công");
+        toast.success("Tạo sản phẩm thành công");
       }
 
       setIsProductDialogOpen(false);
@@ -628,12 +628,12 @@ export function AdminDashboardPage() {
   };
 
   const handleDeleteProduct = async (product: Product) => {
-    if (!product._id || !window.confirm(`Bạn có chắc muốn xóa product "${product.name}"?`)) return;
+    if (!product._id || !window.confirm(`Bạn có chắc muốn xóa sản phẩm "${product.name}"?`)) return;
 
     try {
       await productsApi.remove(product._id);
       setProducts((prev) => prev.filter((item) => item._id !== product._id));
-      toast.success("Đã xóa product");
+      toast.success("Đã xóa sản phẩm");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -645,7 +645,7 @@ export function AdminDashboardPage() {
         <aside className="hidden w-72 shrink-0 border-r bg-white px-4 py-5 lg:block">
           <div className="mb-8 px-3">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outfio</p>
-            <h1 className="mt-2 text-2xl font-bold">Admin dashboard</h1>
+            <h1 className="mt-2 text-2xl font-bold">Bảng quản trị</h1>
           </div>
 
           <nav className="space-y-1">
@@ -683,7 +683,7 @@ export function AdminDashboardPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outfio</p>
-                <h1 className="text-xl font-bold">Admin dashboard</h1>
+                <h1 className="text-xl font-bold">Bảng quản trị</h1>
               </div>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
@@ -708,7 +708,7 @@ export function AdminDashboardPage() {
           <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
             <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-500">Xin chào, {user?.username || "admin"}</p>
+                <p className="text-sm font-medium text-slate-500">Xin chào, {user?.username || "quản trị viên"}</p>
                 <h2 className="mt-1 text-3xl font-bold tracking-tight">
                   {sections.find((item) => item.id === activeSection)?.label}
                 </h2>
@@ -729,11 +729,11 @@ export function AdminDashboardPage() {
             </div>
 
             <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-              <StatCard title="Users" value={stats.users} description={`${stats.admins} tài khoản admin`} icon={Users} />
-              <StatCard title="Orders" value={stats.orders} description={`${stats.pendingOrders} đơn đang chờ`} icon={ClipboardList} />
-              <StatCard title="Payments" value={stats.payments} description={`${stats.paidPayments} đã thanh toán`} icon={CreditCard} />
-              <StatCard title="Shipping" value={stats.shippings} description={`${stats.activeShippings} đang xử lý`} icon={Truck} />
-              <StatCard title="Products" value={stats.products} description={`${stats.lowStock} sản phẩm sắp hết`} icon={Boxes} />
+              <StatCard title="Người dùng" value={stats.users} description={`${stats.admins} tài khoản quản trị`} icon={Users} />
+              <StatCard title="Đơn hàng" value={stats.orders} description={`${stats.pendingOrders} đơn đang chờ`} icon={ClipboardList} />
+              <StatCard title="Thanh toán" value={stats.payments} description={`${stats.paidPayments} đã thanh toán`} icon={CreditCard} />
+              <StatCard title="Giao hàng" value={stats.shippings} description={`${stats.activeShippings} đang xử lý`} icon={Truck} />
+              <StatCard title="Sản phẩm" value={stats.products} description={`${stats.lowStock} sản phẩm sắp hết`} icon={Boxes} />
               <StatCard title="Doanh thu đã ghi nhận" value={money(stats.revenue)} description="Từ các đơn đã thanh toán" icon={BadgeCheck} />
             </div>
 
@@ -769,8 +769,8 @@ export function AdminDashboardPage() {
               <Card>
                 <CardHeader className="gap-4">
                   <Toolbar
-                    title="Danh sách user"
-                    description="Fetch từ API /users"
+                    title="Danh sách người dùng"
+                    description="Lấy dữ liệu từ API /users"
                     searchValue={userSearch}
                     searchPlaceholder="Tìm tên, email, vai trò..."
                     onSearchChange={setUserSearch}
@@ -778,7 +778,7 @@ export function AdminDashboardPage() {
                     action={
                       <Button onClick={openCreateUserDialog}>
                         <UserPlus className="h-4 w-4" />
-                        Thêm user
+                        Thêm người dùng
                       </Button>
                     }
                   />
@@ -789,7 +789,7 @@ export function AdminDashboardPage() {
                       <TableRow>
                         <TableHead>Tên</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
+                        <TableHead>Số điện thoại</TableHead>
                         <TableHead>Vai trò</TableHead>
                         <TableHead>Địa chỉ</TableHead>
                         <TableHead>Cập nhật</TableHead>
@@ -798,9 +798,9 @@ export function AdminDashboardPage() {
                     </TableHeader>
                     <TableBody>
                       {loadingUsers ? (
-                        <EmptyRow colSpan={7} text="Đang tải user..." />
+                        <EmptyRow colSpan={7} text="Đang tải người dùng..." />
                       ) : filteredUsers.length === 0 ? (
-                        <EmptyRow colSpan={7} text="Không có user phù hợp" />
+                        <EmptyRow colSpan={7} text="Không có người dùng phù hợp" />
                       ) : (
                         filteredUsers.map((item) => (
                           <TableRow key={item._id}>
@@ -812,10 +812,10 @@ export function AdminDashboardPage() {
                             <TableCell>{dateTime(item.updatedAt)}</TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-2">
-                                <Button size="icon" variant="outline" onClick={() => openEditUserDialog(item)} title="Sửa user">
+                                <Button size="icon" variant="outline" onClick={() => openEditUserDialog(item)} title="Sửa người dùng">
                                   <Pencil className="h-4 w-4" />
                                 </Button>
-                                <Button size="icon" variant="outline" className="text-red-600" onClick={() => void handleDeleteUser(item._id)} title="Xóa user">
+                                <Button size="icon" variant="outline" className="text-red-600" onClick={() => void handleDeleteUser(item._id)} title="Xóa người dùng">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -833,8 +833,8 @@ export function AdminDashboardPage() {
               <Card>
                 <CardHeader className="gap-4">
                   <Toolbar
-                    title="Danh sách order"
-                    description="Fetch từ API /orders, cập nhật trạng thái bằng /orders/:id/status"
+                    title="Danh sách đơn hàng"
+                    description="Lấy dữ liệu từ API /orders, cập nhật trạng thái bằng /orders/:id/status"
                     searchValue={orderSearch}
                     searchPlaceholder="Tìm mã đơn, khách hàng, SĐT..."
                     onSearchChange={setOrderSearch}
@@ -859,16 +859,16 @@ export function AdminDashboardPage() {
                         <TableHead>Khách hàng</TableHead>
                         <TableHead>Sản phẩm</TableHead>
                         <TableHead>Tổng tiền</TableHead>
-                        <TableHead>Order status</TableHead>
-                        <TableHead>Payment</TableHead>
+                        <TableHead>Trạng thái đơn</TableHead>
+                        <TableHead>Thanh toán</TableHead>
                         <TableHead>Ngày tạo</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loadingOrders ? (
-                        <EmptyRow colSpan={7} text="Đang tải order..." />
+                        <EmptyRow colSpan={7} text="Đang tải đơn hàng..." />
                       ) : filteredOrders.length === 0 ? (
-                        <EmptyRow colSpan={7} text="Không có order phù hợp" />
+                        <EmptyRow colSpan={7} text="Không có đơn hàng phù hợp" />
                       ) : (
                         filteredOrders.map((item) => (
                           <TableRow key={item._id}>
@@ -877,7 +877,7 @@ export function AdminDashboardPage() {
                               <div className="font-medium">{item.customerName}</div>
                               <div className="text-xs text-slate-500">{item.phone}</div>
                             </TableCell>
-                            <TableCell>{item.items.reduce((total, orderItem) => total + orderItem.quantity, 0)} items</TableCell>
+                            <TableCell>{item.items.reduce((total, orderItem) => total + orderItem.quantity, 0)} sản phẩm</TableCell>
                             <TableCell className="font-medium">{money(item.totalAmount)}</TableCell>
                             <TableCell>
                               <select
@@ -911,10 +911,10 @@ export function AdminDashboardPage() {
               <Card>
                 <CardHeader className="gap-4">
                   <Toolbar
-                    title="Danh sách payment"
-                    description="Fetch từ API /payments, cập nhật bằng /payments/:id/status"
+                    title="Danh sách thanh toán"
+                    description="Lấy dữ liệu từ API /payments, cập nhật bằng /payments/:id/status"
                     searchValue={paymentSearch}
-                    searchPlaceholder="Tìm mã payment, provider, user..."
+                    searchPlaceholder="Tìm mã thanh toán, nhà cung cấp, người dùng..."
                     onSearchChange={setPaymentSearch}
                     onRefresh={() => void loadPayments()}
                     action={
@@ -933,20 +933,20 @@ export function AdminDashboardPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Mã payment</TableHead>
-                        <TableHead>User</TableHead>
-                        <TableHead>Provider</TableHead>
+                        <TableHead>Mã thanh toán</TableHead>
+                        <TableHead>Người dùng</TableHead>
+                        <TableHead>Nhà cung cấp</TableHead>
                         <TableHead>Số tiền</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Trạng thái</TableHead>
                         <TableHead>Order</TableHead>
                         <TableHead>Ngày tạo</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loadingPayments ? (
-                        <EmptyRow colSpan={7} text="Đang tải payment..." />
+                        <EmptyRow colSpan={7} text="Đang tải thanh toán..." />
                       ) : filteredPayments.length === 0 ? (
-                        <EmptyRow colSpan={7} text="Không có payment phù hợp" />
+                        <EmptyRow colSpan={7} text="Không có thanh toán phù hợp" />
                       ) : (
                         filteredPayments.map((item) => {
                           const paymentUser = typeof item.user === "object" ? item.user : null;
@@ -985,10 +985,10 @@ export function AdminDashboardPage() {
               <Card>
                 <CardHeader className="gap-4">
                   <Toolbar
-                    title="Danh sách shipping"
-                    description="Fetch từ API /shipping, cập nhật bằng /shipping/:id/status"
+                    title="Danh sách giao hàng"
+                    description="Lấy dữ liệu từ API /shipping, cập nhật bằng /shipping/:id/status"
                     searchValue={shippingSearch}
-                    searchPlaceholder="Tìm tracking, order, shipper..."
+                    searchPlaceholder="Tìm mã vận đơn, đơn hàng, người giao..."
                     onSearchChange={setShippingSearch}
                     onRefresh={() => void loadShippings()}
                     action={
@@ -1007,20 +1007,20 @@ export function AdminDashboardPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Tracking</TableHead>
-                        <TableHead>Order</TableHead>
-                        <TableHead>Shipper</TableHead>
-                        <TableHead>Method</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Mã vận đơn</TableHead>
+                        <TableHead>Đơn hàng</TableHead>
+                        <TableHead>Người giao</TableHead>
+                        <TableHead>Phương thức</TableHead>
+                        <TableHead>Trạng thái</TableHead>
                         <TableHead>Cập nhật gần nhất</TableHead>
                         <TableHead>Ngày tạo</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loadingShippings ? (
-                        <EmptyRow colSpan={7} text="Đang tải shipping..." />
+                        <EmptyRow colSpan={7} text="Đang tải giao hàng..." />
                       ) : filteredShippings.length === 0 ? (
-                        <EmptyRow colSpan={7} text="Không có shipping phù hợp" />
+                        <EmptyRow colSpan={7} text="Không có giao hàng phù hợp" />
                       ) : (
                         filteredShippings.map((item) => {
                           const latestUpdate = item.updates?.[item.updates.length - 1];
@@ -1061,16 +1061,16 @@ export function AdminDashboardPage() {
               <Card>
                 <CardHeader className="gap-4">
                   <Toolbar
-                    title="Danh sách product"
-                    description="Fetch từ API /products, thêm/sửa/xóa bằng quyền admin"
+                    title="Danh sách sản phẩm"
+                    description="Lấy dữ liệu từ API /products, thêm/sửa/xóa bằng quyền quản trị"
                     searchValue={productSearch}
-                    searchPlaceholder="Tìm tên, brand, category..."
+                    searchPlaceholder="Tìm tên, thương hiệu, danh mục..."
                     onSearchChange={setProductSearch}
                     onRefresh={() => void loadProducts()}
                     action={
                       <Button onClick={openCreateProductDialog}>
                         <PackagePlus className="h-4 w-4" />
-                        Thêm product
+                        Thêm sản phẩm
                       </Button>
                     }
                   />
@@ -1079,20 +1079,20 @@ export function AdminDashboardPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Category</TableHead>
+                        <TableHead>Sản phẩm</TableHead>
+                        <TableHead>Danh mục</TableHead>
                         <TableHead>Giá</TableHead>
                         <TableHead>Kho</TableHead>
                         <TableHead>Đã bán</TableHead>
-                        <TableHead>Featured</TableHead>
+                        <TableHead>Nổi bật</TableHead>
                         <TableHead className="text-right">Hành động</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loadingProducts ? (
-                        <EmptyRow colSpan={7} text="Đang tải product..." />
+                        <EmptyRow colSpan={7} text="Đang tải sản phẩm..." />
                       ) : filteredProducts.length === 0 ? (
-                        <EmptyRow colSpan={7} text="Không có product phù hợp" />
+                        <EmptyRow colSpan={7} text="Không có sản phẩm phù hợp" />
                       ) : (
                         filteredProducts.map((item) => (
                           <TableRow key={item._id || item.id}>
@@ -1107,10 +1107,10 @@ export function AdminDashboardPage() {
                             <TableCell>{item.isFeatured ? "Có" : "Không"}</TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-2">
-                                <Button size="icon" variant="outline" onClick={() => openEditProductDialog(item)} title="Sửa product">
+                                <Button size="icon" variant="outline" onClick={() => openEditProductDialog(item)} title="Sửa sản phẩm">
                                   <Pencil className="h-4 w-4" />
                                 </Button>
-                                <Button size="icon" variant="outline" className="text-red-600" onClick={() => void handleDeleteProduct(item)} title="Xóa product">
+                                <Button size="icon" variant="outline" className="text-red-600" onClick={() => void handleDeleteProduct(item)} title="Xóa sản phẩm">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -1269,7 +1269,7 @@ function RevenueReportPanel({
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-sm bg-blue-600" />
-              So don
+              Số đơn
             </div>
           </div>
 
@@ -1310,7 +1310,7 @@ function RevenueReportPanel({
                   <Legend
                     verticalAlign="top"
                     height={28}
-                    formatter={(value) => (value === "revenue" ? "Doanh thu" : "So don")}
+                    formatter={(value) => (value === "revenue" ? "Doanh thu" : "Số đơn")}
                   />
                   <Line
                     yAxisId="revenue"
@@ -1663,14 +1663,14 @@ function RecentOrders({ orders, loading }: { orders: AdminOrder[]; loading: bool
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Order mới nhất</CardTitle>
-        <CardDescription>Theo dữ liệu vừa fetch từ backend</CardDescription>
+        <CardTitle>Đơn hàng mới nhất</CardTitle>
+        <CardDescription>Theo dữ liệu mới lấy từ backend</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
           <p className="text-sm text-slate-500">Đang tải...</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-slate-500">Chưa có order</p>
+          <p className="text-sm text-slate-500">Chưa có đơn hàng</p>
         ) : (
           orders.map((order) => (
             <div key={order._id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
@@ -1691,14 +1691,14 @@ function LowStockProducts({ products, loading }: { products: Product[]; loading:
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Product sắp hết hàng</CardTitle>
+        <CardTitle>Sản phẩm sắp hết hàng</CardTitle>
         <CardDescription>Ưu tiên kiểm tra tồn kho</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
           <p className="text-sm text-slate-500">Đang tải...</p>
         ) : products.length === 0 ? (
-          <p className="text-sm text-slate-500">Không có product sắp hết hàng</p>
+          <p className="text-sm text-slate-500">Không có sản phẩm sắp hết hàng</p>
         ) : (
           products.map((product) => (
             <div key={product._id || product.id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
@@ -1736,7 +1736,7 @@ function UserDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
-          <DialogTitle>{editingUser ? "Cập nhật user" : "Tạo user mới"}</DialogTitle>
+          <DialogTitle>{editingUser ? "Cập nhật người dùng" : "Tạo người dùng mới"}</DialogTitle>
           <DialogDescription>Thông tin sẽ được lưu qua API /users.</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -1762,7 +1762,7 @@ function UserDialog({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
-            <Button type="submit" disabled={submitting}>{submitting ? "Đang lưu..." : "Lưu user"}</Button>
+            <Button type="submit" disabled={submitting}>{submitting ? "Đang lưu..." : "Lưu người dùng"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -1793,16 +1793,16 @@ function ProductDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[760px]">
         <DialogHeader>
-          <DialogTitle>{editingProduct ? "Cập nhật product" : "Tạo product mới"}</DialogTitle>
-          <DialogDescription>Nhập sizes, colors, images bằng dấu phẩy nếu có nhiều giá trị.</DialogDescription>
+          <DialogTitle>{editingProduct ? "Cập nhật sản phẩm" : "Tạo sản phẩm mới"}</DialogTitle>
+          <DialogDescription>Nhập kích cỡ, màu sắc và URL ảnh bằng dấu phẩy nếu có nhiều giá trị.</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Tên product" id="product-name" value={form.name} onChange={(value) => onFormChange({ ...form, name: value })} required />
+            <Field label="Tên sản phẩm" id="product-name" value={form.name} onChange={(value) => onFormChange({ ...form, name: value })} required />
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">Danh mục</Label>
               <select id="category" value={form.category} onChange={(e) => onFormChange({ ...form, category: e.target.value })} required className="h-10 w-full rounded-md border bg-white px-3 text-sm">
-                <option value="">Chọn category</option>
+                <option value="">Chọn danh mục</option>
                 {categories.map((category) => <option key={category._id} value={category._id}>{category.name}</option>)}
               </select>
             </div>
@@ -1813,31 +1813,31 @@ function ProductDialog({
             <Field label="Tồn kho" id="stock" type="number" value={form.stock} onChange={(value) => onFormChange({ ...form, stock: value })} />
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Brand" id="brand" value={form.brand} onChange={(value) => onFormChange({ ...form, brand: value })} />
-            <Field label="Material" id="material" value={form.material} onChange={(value) => onFormChange({ ...form, material: value })} />
+            <Field label="Thương hiệu" id="brand" value={form.brand} onChange={(value) => onFormChange({ ...form, brand: value })} />
+            <Field label="Chất liệu" id="material" value={form.material} onChange={(value) => onFormChange({ ...form, material: value })} />
             <div className="space-y-2">
-              <Label htmlFor="gender">Gender</Label>
+              <Label htmlFor="gender">Giới tính</Label>
               <select id="gender" value={form.gender} onChange={(e) => onFormChange({ ...form, gender: e.target.value as Product["gender"] })} className="h-10 w-full rounded-md border bg-white px-3 text-sm">
                 {["men", "women", "unisex", "kids"].map((gender) => <option key={gender} value={gender}>{gender}</option>)}
               </select>
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Sizes" id="sizes" value={form.sizes} onChange={(value) => onFormChange({ ...form, sizes: value })} placeholder="S, M, L" />
-            <Field label="Colors" id="colors" value={form.colors} onChange={(value) => onFormChange({ ...form, colors: value })} placeholder="Đen, Trắng" />
+            <Field label="Kích cỡ" id="sizes" value={form.sizes} onChange={(value) => onFormChange({ ...form, sizes: value })} placeholder="S, M, L" />
+            <Field label="Màu sắc" id="colors" value={form.colors} onChange={(value) => onFormChange({ ...form, colors: value })} placeholder="Đen, Trắng" />
           </div>
-          <Field label="Images URL" id="images" value={form.images} onChange={(value) => onFormChange({ ...form, images: value })} placeholder="https://..., https://..." />
+          <Field label="URL ảnh" id="images" value={form.images} onChange={(value) => onFormChange({ ...form, images: value })} placeholder="https://..., https://..." />
           <div className="space-y-2">
             <Label htmlFor="description">Mô tả</Label>
             <Textarea id="description" value={form.description} onChange={(e) => onFormChange({ ...form, description: e.target.value })} />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.isFeatured} onChange={(e) => onFormChange({ ...form, isFeatured: e.target.checked })} />
-            Product nổi bật
+            Sản phẩm nổi bật
           </label>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
-            <Button type="submit" disabled={submitting || categories.length === 0}>{submitting ? "Đang lưu..." : "Lưu product"}</Button>
+            <Button type="submit" disabled={submitting || categories.length === 0}>{submitting ? "Đang lưu..." : "Lưu sản phẩm"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

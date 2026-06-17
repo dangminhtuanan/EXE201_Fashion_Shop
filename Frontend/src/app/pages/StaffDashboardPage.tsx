@@ -39,10 +39,10 @@ type StaffSection = "overview" | "orders" | "payments" | "products";
 type StaffOrder = Order & { user?: Pick<UserProfile, "_id" | "username" | "email" | "phone"> };
 
 const sections = [
-  { id: "overview", label: "Tong quan", icon: LayoutDashboard },
-  { id: "orders", label: "Orders", icon: ClipboardList },
-  { id: "payments", label: "Payments", icon: CreditCard },
-  { id: "products", label: "Products", icon: Boxes },
+  { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
+  { id: "orders", label: "Đơn hàng", icon: ClipboardList },
+  { id: "payments", label: "Thanh toán", icon: CreditCard },
+  { id: "products", label: "Sản phẩm", icon: Boxes },
 ] satisfies Array<{ id: StaffSection; label: string; icon: typeof LayoutDashboard }>;
 
 const orderStatuses: Order["status"][] = [
@@ -170,7 +170,7 @@ export function StaffDashboardPage() {
 
   const handleLogout = () => {
     logout();
-    toast.success("Da dang xuat");
+    toast.success("Đã đăng xuất");
     navigate("/login", { replace: true });
   };
 
@@ -183,7 +183,7 @@ export function StaffDashboardPage() {
     try {
       const response = await ordersApi.updateStatus(orderId, { [field]: value });
       setOrders((prev) => prev.map((item) => (item._id === orderId ? (response.order as StaffOrder) : item)));
-      toast.success("Da cap nhat order");
+      toast.success("Đã cập nhật đơn hàng");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -197,7 +197,7 @@ export function StaffDashboardPage() {
       const response = await paymentsApi.updateStatus(paymentId, { status });
       setPayments((prev) => prev.map((item) => (item._id === paymentId ? response.payment : item)));
       void loadData();
-      toast.success("Da cap nhat payment");
+      toast.success("Đã cập nhật thanh toán");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -213,7 +213,7 @@ export function StaffDashboardPage() {
         shippingMethod: "standard",
       });
       await loadData();
-      toast.success("Da tao shipping cho order");
+      toast.success("Đã tạo giao hàng cho đơn hàng");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -227,8 +227,8 @@ export function StaffDashboardPage() {
         <aside className="hidden w-72 shrink-0 border-r bg-white px-4 py-5 lg:block">
           <div className="mb-8 px-3">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outfio</p>
-            <h1 className="mt-2 text-2xl font-bold">Staff dashboard</h1>
-            <p className="mt-2 text-sm text-slate-500">Xu ly order, payment va tao shipping</p>
+            <h1 className="mt-2 text-2xl font-bold">Bảng điều khiển nhân viên</h1>
+            <p className="mt-2 text-sm text-slate-500">Xử lý đơn hàng, thanh toán và tạo giao hàng</p>
           </div>
 
           <nav className="space-y-1">
@@ -252,11 +252,11 @@ export function StaffDashboardPage() {
           </nav>
 
           <div className="mt-8 rounded-md border bg-slate-50 p-3 text-sm text-slate-600">
-            <p className="font-medium text-slate-900">{user?.username || "Staff"}</p>
+            <p className="font-medium text-slate-900">{user?.username || "Nhân viên"}</p>
             <p className="mt-1 break-all">{user?.email}</p>
             <Button variant="outline" className="mt-3 w-full" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
-              Dang xuat
+              Đăng xuất
             </Button>
           </div>
         </aside>
@@ -266,11 +266,11 @@ export function StaffDashboardPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outfio</p>
-                <h1 className="text-xl font-bold">Staff dashboard</h1>
+                <h1 className="text-xl font-bold">Bảng điều khiển nhân viên</h1>
               </div>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
-                Dang xuat
+                Đăng xuất
               </Button>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
@@ -291,7 +291,7 @@ export function StaffDashboardPage() {
           <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
             <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-500">Xin chao, {user?.username || "staff"}</p>
+                <p className="text-sm font-medium text-slate-500">Xin chào, {user?.username || "nhân viên"}</p>
                 <h2 className="mt-1 text-3xl font-bold tracking-tight">
                   {sections.find((item) => item.id === activeSection)?.label}
                 </h2>
@@ -299,21 +299,21 @@ export function StaffDashboardPage() {
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => void loadData()}>
                   <RefreshCcw className="h-4 w-4" />
-                  Lam moi
+                  Làm mới
                 </Button>
                 <Button variant="outline" onClick={handleLogout}>
                   <LogOut className="h-4 w-4" />
-                  Dang xuat
+                  Đăng xuất
                 </Button>
               </div>
             </div>
 
             <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <StatCard title="Orders" value={stats.orders} description={`${stats.pendingOrders} pending`} icon={ClipboardList} />
-              <StatCard title="Payments" value={stats.payments} description={`${stats.paidPayments} paid`} icon={CreditCard} />
-              <StatCard title="Products" value={stats.products} description={`${stats.lowStock} low stock`} icon={Boxes} />
-              <StatCard title="Revenue" value={money(stats.revenue)} icon={BadgeCheck} />
-              <StatCard title="Shipping action" value={orders.filter(canCreateShipping).length} description="ready orders" icon={Truck} />
+              <StatCard title="Đơn hàng" value={stats.orders} description={`${stats.pendingOrders} đơn chờ xử lý`} icon={ClipboardList} />
+              <StatCard title="Thanh toán" value={stats.payments} description={`${stats.paidPayments} đã thanh toán`} icon={CreditCard} />
+              <StatCard title="Sản phẩm" value={stats.products} description={`${stats.lowStock} sắp hết hàng`} icon={Boxes} />
+              <StatCard title="Doanh thu" value={money(stats.revenue)} icon={BadgeCheck} />
+              <StatCard title="Tạo giao hàng" value={orders.filter(canCreateShipping).length} description="đơn sẵn sàng" icon={Truck} />
             </div>
 
             {activeSection !== "overview" && (
@@ -323,7 +323,7 @@ export function StaffDashboardPage() {
                   <Input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Tim kiem du lieu..."
+                    placeholder="Tìm kiếm dữ liệu..."
                     className="pl-9"
                   />
                 </div>
@@ -334,7 +334,7 @@ export function StaffDashboardPage() {
                       onChange={(event) => setOrderStatusFilter(event.target.value)}
                       className="h-9 rounded-md border bg-white px-3 text-sm"
                     >
-                      <option value="">Tat ca order status</option>
+                      <option value="">Tất cả trạng thái đơn hàng</option>
                       {orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                     </select>
                   )}
@@ -344,7 +344,7 @@ export function StaffDashboardPage() {
                       onChange={(event) => setPaymentStatusFilter(event.target.value)}
                       className="h-9 rounded-md border bg-white px-3 text-sm"
                     >
-                      <option value="">Tat ca payment status</option>
+                      <option value="">Tất cả trạng thái thanh toán</option>
                       {paymentStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                     </select>
                   )}
@@ -362,16 +362,16 @@ export function StaffDashboardPage() {
             )}
 
             {activeSection === "orders" && (
-              <DataCard title="Danh sach order" description="Staff cap nhat order/payment status va tao shipping">
+              <DataCard title="Danh sách đơn hàng" description="Nhân viên cập nhật trạng thái đơn hàng/thanh toán và tạo giao hàng">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Ma don</TableHead>
-                      <TableHead>Khach hang</TableHead>
-                      <TableHead>San pham</TableHead>
-                      <TableHead>Tong tien</TableHead>
-                      <TableHead>Order status</TableHead>
-                      <TableHead>Payment</TableHead>
+                      <TableHead>Mã đơn</TableHead>
+                      <TableHead>Khách hàng</TableHead>
+                      <TableHead>Sản phẩm</TableHead>
+                      <TableHead>Tổng tiền</TableHead>
+                      <TableHead>Trạng thái đơn</TableHead>
+                      <TableHead>Thanh toán</TableHead>
                       <TableHead>Shipping</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -383,7 +383,7 @@ export function StaffDashboardPage() {
                           <div className="font-medium">{item.customerName}</div>
                           <div className="text-xs text-slate-500">{item.phone}</div>
                         </TableCell>
-                        <TableCell>{item.items.reduce((total, orderItem) => total + orderItem.quantity, 0)} items</TableCell>
+                        <TableCell>{item.items.reduce((total, orderItem) => total + orderItem.quantity, 0)} sản phẩm</TableCell>
                         <TableCell>{money(item.totalAmount)}</TableCell>
                         <TableCell>
                           <select
@@ -413,29 +413,29 @@ export function StaffDashboardPage() {
                             onClick={() => void handleCreateShipping(item)}
                           >
                             <PackagePlus className="h-4 w-4" />
-                            Tao shipping
+                            Tạo giao hàng
                           </Button>
                         </TableCell>
                       </TableRow>
                     ))}
-                    {!loading && filteredOrders.length === 0 && <EmptyRow colSpan={7} text="Khong co order phu hop" />}
+                    {!loading && filteredOrders.length === 0 && <EmptyRow colSpan={7} text="Không có đơn hàng phù hợp" />}
                   </TableBody>
                 </Table>
               </DataCard>
             )}
 
             {activeSection === "payments" && (
-              <DataCard title="Danh sach payment" description="Staff cap nhat trang thai thanh toan">
+              <DataCard title="Danh sách thanh toán" description="Nhân viên cập nhật trạng thái thanh toán">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Ma payment</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Provider</TableHead>
-                      <TableHead>So tien</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Order</TableHead>
-                      <TableHead>Ngay tao</TableHead>
+                      <TableHead>Mã thanh toán</TableHead>
+                      <TableHead>Người dùng</TableHead>
+                      <TableHead>Nhà cung cấp</TableHead>
+                      <TableHead>Số tiền</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead>Đơn hàng</TableHead>
+                      <TableHead>Ngày tạo</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -466,23 +466,23 @@ export function StaffDashboardPage() {
                         </TableRow>
                       );
                     })}
-                    {!loading && filteredPayments.length === 0 && <EmptyRow colSpan={7} text="Khong co payment phu hop" />}
+                    {!loading && filteredPayments.length === 0 && <EmptyRow colSpan={7} text="Không có thanh toán phù hợp" />}
                   </TableBody>
                 </Table>
               </DataCard>
             )}
 
             {activeSection === "products" && (
-              <DataCard title="Danh sach product" description="Staff theo doi product va ton kho">
+              <DataCard title="Danh sách sản phẩm" description="Nhân viên theo dõi sản phẩm và tồn kho">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Gia</TableHead>
+                      <TableHead>Sản phẩm</TableHead>
+                      <TableHead>Danh mục</TableHead>
+                      <TableHead>Giá</TableHead>
                       <TableHead>Kho</TableHead>
-                      <TableHead>Da ban</TableHead>
-                      <TableHead>Featured</TableHead>
+                      <TableHead>Đã bán</TableHead>
+                      <TableHead>Nổi bật</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -496,10 +496,10 @@ export function StaffDashboardPage() {
                         <TableCell>{money(item.price)}</TableCell>
                         <TableCell><Badge variant={(item.stock || 0) <= 5 ? "destructive" : "secondary"}>{item.stock || 0}</Badge></TableCell>
                         <TableCell>{item.sold || 0}</TableCell>
-                        <TableCell>{item.isFeatured ? "Co" : "Khong"}</TableCell>
+                        <TableCell>{item.isFeatured ? "Có" : "Không"}</TableCell>
                       </TableRow>
                     ))}
-                    {!loading && filteredProducts.length === 0 && <EmptyRow colSpan={6} text="Khong co product phu hop" />}
+                    {!loading && filteredProducts.length === 0 && <EmptyRow colSpan={6} text="Không có sản phẩm phù hợp" />}
                   </TableBody>
                 </Table>
               </DataCard>
@@ -548,7 +548,7 @@ function DataCard({ title, description, children }: { title: string; description
   );
 }
 
-function EmptyRow({ colSpan, text = "Dang tai du lieu..." }: { colSpan: number; text?: string }) {
+function EmptyRow({ colSpan, text = "Đang tải dữ liệu..." }: { colSpan: number; text?: string }) {
   return (
     <TableRow>
       <TableCell colSpan={colSpan} className="py-8 text-center text-slate-500">
@@ -562,14 +562,14 @@ function RecentOrders({ orders, loading }: { orders: StaffOrder[]; loading: bool
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Order moi nhat</CardTitle>
-        <CardDescription>Cac don can xu ly gan day</CardDescription>
+        <CardTitle>Đơn hàng mới nhất</CardTitle>
+        <CardDescription>Các đơn cần xử lý gần đây</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
-          <p className="text-sm text-slate-500">Dang tai...</p>
+          <p className="text-sm text-slate-500">Đang tải...</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-slate-500">Chua co order</p>
+          <p className="text-sm text-slate-500">Chưa có đơn hàng</p>
         ) : (
           orders.map((order) => (
             <div key={order._id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
@@ -590,14 +590,14 @@ function LowStockProducts({ products, loading }: { products: Product[]; loading:
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Product sap het hang</CardTitle>
-        <CardDescription>Can bao cao/bo sung hang</CardDescription>
+        <CardTitle>Sản phẩm sắp hết hàng</CardTitle>
+        <CardDescription>Cần báo cáo/bổ sung hàng</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
-          <p className="text-sm text-slate-500">Dang tai...</p>
+          <p className="text-sm text-slate-500">Đang tải...</p>
         ) : products.length === 0 ? (
-          <p className="text-sm text-slate-500">Khong co product sap het hang</p>
+          <p className="text-sm text-slate-500">Không có sản phẩm sắp hết hàng</p>
         ) : (
           products.map((product) => (
             <div key={product._id || product.id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
@@ -618,14 +618,14 @@ function RecentPayments({ payments, loading }: { payments: Payment[]; loading: b
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payment moi nhat</CardTitle>
-        <CardDescription>Theo giao dich thanh toan moi nhat</CardDescription>
+        <CardTitle>Thanh toán mới nhất</CardTitle>
+        <CardDescription>Theo giao dịch thanh toán mới nhất</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
-          <p className="text-sm text-slate-500">Dang tai...</p>
+          <p className="text-sm text-slate-500">Đang tải...</p>
         ) : payments.length === 0 ? (
-          <p className="text-sm text-slate-500">Chua co payment</p>
+          <p className="text-sm text-slate-500">Chưa có thanh toán</p>
         ) : (
           payments.map((payment) => (
             <div key={payment._id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
@@ -656,14 +656,14 @@ function ReadyShippingOrders({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Order san sang tao shipping</CardTitle>
-        <CardDescription>Cac don da xac nhan/packing</CardDescription>
+        <CardTitle>Đơn hàng sẵn sàng tạo giao hàng</CardTitle>
+        <CardDescription>Các đơn đã xác nhận/đang đóng gói</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
-          <p className="text-sm text-slate-500">Dang tai...</p>
+          <p className="text-sm text-slate-500">Đang tải...</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-slate-500">Chua co order san sang tao shipping</p>
+          <p className="text-sm text-slate-500">Chưa có đơn hàng sẵn sàng tạo giao hàng</p>
         ) : (
           orders.map((order) => (
             <div key={order._id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
@@ -677,7 +677,7 @@ function ReadyShippingOrders({
                 disabled={updatingId === order._id}
                 onClick={() => onCreateShipping(order)}
               >
-                Tao shipping
+                Tạo giao hàng
               </Button>
             </div>
           ))

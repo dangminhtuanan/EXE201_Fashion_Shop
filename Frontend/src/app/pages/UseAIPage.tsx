@@ -288,8 +288,8 @@ const AIHistoryView = ({
     <div className="mx-auto max-w-[1180px]">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Lich su AI</h1>
-          <p className="mt-1 text-sm text-gray-600">Cac anh AI try on va mix and match da tao theo tai khoan hien tai.</p>
+          <h1 className="text-2xl font-bold text-gray-900">Lịch sử AI</h1>
+          <p className="mt-1 text-sm text-gray-600">Các ảnh AI try on và mix and match đã tạo theo tài khoản hiện tại.</p>
         </div>
         <button
           onClick={onRefresh}
@@ -297,21 +297,21 @@ const AIHistoryView = ({
           className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <RotateCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Lam moi
+          Làm mới
         </button>
       </div>
 
       {isLoading && (
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
-          Dang tai lich su...
+          Đang tải lịch sử...
         </div>
       )}
 
       {!isLoading && historyItems.length === 0 && (
         <div className="rounded-lg border border-dashed border-gray-200 bg-white p-10 text-center">
           <History className="mx-auto mb-3 h-8 w-8 text-gray-300" />
-          <p className="font-medium text-gray-900">Chua co anh nao trong lich su</p>
-          <p className="mt-1 text-sm text-gray-500">Sau khi tao AI try on hoac mix and match, ket qua se hien o day.</p>
+          <p className="font-medium text-gray-900">Chưa có ảnh nào trong lịch sử</p>
+          <p className="mt-1 text-sm text-gray-500">Sau khi tạo AI try on hoặc mix and match, kết quả sẽ hiển thị ở đây.</p>
         </div>
       )}
 
@@ -339,7 +339,7 @@ const AIHistoryView = ({
               <div className="space-y-3 p-3">
                 <div>
                   <p className="line-clamp-1 text-sm font-semibold text-gray-900">
-                    {item.product?.name || (item.clothType === 'combo' ? 'Outfit mix and match' : 'Thu do AI')}
+                    {item.product?.name || (item.clothType === 'combo' ? 'Outfit mix and match' : 'Thử đồ AI')}
                   </p>
                   <p className="mt-0.5 text-xs text-gray-500">{formatHistoryDate(item.createdAt)}</p>
                 </div>
@@ -365,7 +365,7 @@ const AIHistoryView = ({
                   className="flex items-center justify-center gap-2 rounded-lg bg-[#20B29A] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#1a9682]"
                 >
                   <Download className="h-4 w-4" />
-                  Mo anh ket qua
+                  Mở ảnh kết quả
                 </a>
               </div>
             </div>
@@ -570,7 +570,7 @@ export function UseAIPage() {
     }
 
     if (brokenImageUrls.has(selectedProduct.image)) {
-      alert('Anh san pham nay dang loi 404. Vui long chon san pham co anh hop le.');
+      alert('Ảnh sản phẩm này đang lỗi 404. Vui lòng chọn sản phẩm có ảnh hợp lệ.');
       return;
     }
 
@@ -585,7 +585,7 @@ export function UseAIPage() {
       });
 
       if (!response.resultImageUrl) {
-        alert('AI dang xu ly, vui long thu lai sau it phut.');
+        alert('AI đang xử lý, vui lòng thử lại sau ít phút.');
         return;
       }
 
@@ -616,7 +616,7 @@ export function UseAIPage() {
     }
 
     if (brokenImageUrls.has(selectedProduct.image)) {
-      alert('Anh san pham nay dang loi 404. Vui long chon san pham co anh hop le.');
+      alert('Ảnh sản phẩm này đang lỗi 404. Vui lòng chọn sản phẩm có ảnh hợp lệ.');
       return;
     }
 
@@ -629,7 +629,7 @@ export function UseAIPage() {
       });
 
       if (!response.resultImageUrl) {
-        alert('AI dang xu ly, vui long thu lai sau it phut.');
+        alert('AI đang xử lý, vui lòng thử lại sau ít phút.');
         return;
       }
 
@@ -692,7 +692,7 @@ export function UseAIPage() {
       {/* Sidebar - Desktop & Mobile overlay */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-[240px] bg-white border-r border-gray-200 flex flex-col h-full transition-transform transform md:relative md:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-4 flex items-center justify-between md:block">
-          <NavItem icon={Home} label="Trang chu" onClick={() => navigateFromSidebar('/')} />
+          <NavItem icon={Home} label="Trang chủ" onClick={() => navigateFromSidebar('/')} />
           <button className="md:hidden p-2 text-gray-400" onClick={() => setMobileMenuOpen(false)}>
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -777,9 +777,9 @@ export function UseAIPage() {
 
                   <label className="border border-gray-200 rounded-xl bg-white flex flex-col items-center justify-center py-4 mb-6 hover:bg-gray-50 transition-colors cursor-pointer">
                     <div className="flex items-center justify-center text-[#20B29A] font-medium mb-1 gap-1">
-                      <Upload className="w-4 h-4" /> Upload anh mau len Cloudinary
+                      <Upload className="w-4 h-4" /> Upload ảnh mẫu lên Cloudinary
                     </div>
-                    <p className="text-xs text-gray-500">{isUploadingModel ? 'Dang upload...' : 'Chon anh nguoi dung de thu do'}</p>
+                    <p className="text-xs text-gray-500">{isUploadingModel ? 'Đang upload...' : 'Chọn ảnh người dùng để thử đồ'}</p>
                     <input
                       type="file"
                       accept="image/*"
@@ -795,10 +795,10 @@ export function UseAIPage() {
 
                   <div className="flex overflow-x-auto gap-2 pb-2 -mx-1 px-1 scrollbar-hide">
                     {isLoadingProducts && (
-                      <div className="text-xs text-gray-500 py-4">Dang tai san pham...</div>
+                      <div className="text-xs text-gray-500 py-4">Đang tải sản phẩm...</div>
                     )}
                     {!isLoadingProducts && productChoices.length === 0 && (
-                      <div className="text-xs text-gray-500 py-4">Chua co san pham co anh trong API.</div>
+                      <div className="text-xs text-gray-500 py-4">Chưa có sản phẩm có ảnh trong API.</div>
                     )}
                     {productChoices.map((product, i) => (
                       <button 
@@ -858,7 +858,7 @@ export function UseAIPage() {
 
                     <label className="border border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center aspect-[3/4] bg-gray-50 hover:bg-gray-100 text-gray-500 transition-colors cursor-pointer">
                       <Upload className="w-5 h-5 mb-1" />
-                      <span className="text-xs font-medium">{isUploadingModel ? 'Dang tai' : 'Cloudinary'}</span>
+                      <span className="text-xs font-medium">{isUploadingModel ? 'Đang tải' : 'Cloudinary'}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -869,7 +869,7 @@ export function UseAIPage() {
 
                     {modelTab === 1 && uploadedModelImages.length === 0 && (
                       <div className="col-span-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-6 text-center text-xs text-gray-500">
-                        Chua co mau nao. Upload anh len Cloudinary de luu vao mau cua toi.
+                        Chưa có mẫu nào. Upload ảnh lên Cloudinary để lưu vào mẫu của tôi.
                       </div>
                     )}
 
@@ -908,10 +908,10 @@ export function UseAIPage() {
 
                   <div className="flex overflow-x-auto gap-2 pb-2 -mx-1 px-1 scrollbar-hide mb-4">
                     {isLoadingProducts && (
-                      <div className="text-xs text-gray-500 py-4">Dang tai san pham...</div>
+                      <div className="text-xs text-gray-500 py-4">Đang tải sản phẩm...</div>
                     )}
                     {!isLoadingProducts && stylingProductChoices.length === 0 && (
-                      <div className="text-xs text-gray-500 py-4">Chua co san pham ao/quan co anh trong API.</div>
+                      <div className="text-xs text-gray-500 py-4">Chưa có sản phẩm áo/quần có ảnh trong API.</div>
                     )}
                     {stylingProductChoices.map((product, i) => (
                       <button 
@@ -952,7 +952,7 @@ export function UseAIPage() {
                   <div className="grid grid-cols-4 gap-2">
                     <label className="border border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center aspect-[3/4] bg-gray-50 hover:bg-gray-100 text-gray-500 transition-colors cursor-pointer">
                       <Upload className="w-5 h-5 mb-1" />
-                      <span className="text-xs font-medium">{isUploadingModel ? 'Dang tai' : 'Cloudinary'}</span>
+                      <span className="text-xs font-medium">{isUploadingModel ? 'Đang tải' : 'Cloudinary'}</span>
                       <input
                         type="file"
                         accept="image/*"

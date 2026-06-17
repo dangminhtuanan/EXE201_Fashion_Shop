@@ -244,7 +244,7 @@ export function ProductDetailPage() {
         size: selectedSize,
         color: selectedColor,
       });
-      toast.success("Da them san pham vao gio hang");
+      toast.success("Đã thêm sản phẩm vào giỏ hàng");
       return true;
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -293,7 +293,7 @@ export function ProductDetailPage() {
         setReviews(nextReviews);
         syncProductRating(nextReviews);
         cancelEditingReview();
-        toast.success("Da cap nhat danh gia");
+        toast.success("Đã cập nhật đánh giá");
         return;
       }
 
@@ -308,7 +308,7 @@ export function ProductDetailPage() {
       syncProductRating(nextReviews);
       setReviewRating(5);
       setReviewComment("");
-      toast.success("Da gui danh gia");
+      toast.success("Đã gửi đánh giá");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -317,7 +317,7 @@ export function ProductDetailPage() {
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    const confirmed = window.confirm("Ban co chac muon xoa danh gia nay?");
+    const confirmed = window.confirm("Bạn có chắc muốn xóa đánh giá này?");
     if (!confirmed) {
       return;
     }
@@ -329,7 +329,7 @@ export function ProductDetailPage() {
       setReviews(nextReviews);
       syncProductRating(nextReviews);
       cancelEditingReview();
-      toast.success("Da xoa danh gia");
+      toast.success("Đã xóa đánh giá");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -355,10 +355,10 @@ export function ProductDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Khong tim thay san pham
+            Không tìm thấy sản phẩm
           </h1>
           <Link to="/" className="text-indigo-600 hover:underline">
-            Quay ve trang chu
+            Quay về trang chủ
           </Link>
         </div>
       </div>
@@ -371,7 +371,7 @@ export function ProductDetailPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center space-x-2 text-sm text-gray-500">
             <Link to="/" className="hover:text-gray-900">
-              Trang chu
+              Trang chủ
             </Link>
             <ChevronRight className="w-4 h-4" />
             <span className="text-gray-900 font-medium truncate">
@@ -429,10 +429,10 @@ export function ProductDetailPage() {
             <div className="w-full md:w-1/2 p-6 md:p-8 lg:p-10 border-t md:border-t-0 md:border-l border-gray-100 flex flex-col">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md uppercase tracking-wider">
-                  {product.stock && product.stock > 0 ? "Con hang" : "Het hang"}
+                  {product.stock && product.stock > 0 ? "Còn hàng" : "Hết hàng"}
                 </span>
                 <button className="text-gray-400 hover:text-gray-600 flex items-center gap-1.5 text-sm">
-                  <Share2 className="w-4 h-4" /> Chia se
+                  <Share2 className="w-4 h-4" /> Chia sẻ
                 </button>
               </div>
 
@@ -461,7 +461,7 @@ export function ProductDetailPage() {
                   href="#reviews"
                   className="text-sm text-gray-500 hover:text-indigo-600 hover:underline"
                 >
-                  {reviewCount} danh gia
+                  {reviewCount} đánh giá
                 </a>
               </div>
 
@@ -485,7 +485,7 @@ export function ProductDetailPage() {
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-medium text-gray-900">
-                      Mau sac:{" "}
+                      Màu sắc:{" "}
                       <span className="text-gray-500 font-normal">
                         {colors.find((color) => color.id === selectedColor)?.name}
                       </span>
@@ -516,7 +516,7 @@ export function ProductDetailPage() {
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-medium text-gray-900">
-                      Kich thuoc
+                      Kích thước
                     </h3>
                   </div>
                   <div className="grid grid-cols-4 gap-3">
@@ -539,7 +539,7 @@ export function ProductDetailPage() {
 
               <div className="mb-8">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">
-                  So luong
+                  Số lượng
                 </h3>
                 <div className="flex items-center w-32 border border-gray-200 rounded-lg bg-gray-50">
                   <button
@@ -569,7 +569,7 @@ export function ProductDetailPage() {
                     disabled={isOutOfStock}
                     className="flex-1 bg-white border border-black text-black font-semibold py-3.5 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                   >
-                    <ShoppingBag className="w-5 h-5" /> Them vao gio
+                    <ShoppingBag className="w-5 h-5" /> Thêm vào giỏ
                   </button>
                   <button
                     onClick={() => void handleBuyNow()}
@@ -584,37 +584,37 @@ export function ProductDetailPage() {
                   to="/use-ai"
                   className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold py-3.5 rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
                 >
-                  <Wand2 className="w-5 h-5" /> Thu nghiem voi AI
+                  <Wand2 className="w-5 h-5" /> Thử nghiệm với AI
                 </Link>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-6 border-y border-gray-100 mb-6">
                 <div className="flex items-center gap-3 text-sm text-gray-600">
                   <Truck className="w-5 h-5 text-gray-400" />
-                  Giao hang nhanh
+                  Giao hàng nhanh
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-600">
                   <RotateCcw className="w-5 h-5 text-gray-400" />
-                  Doi tra theo chinh sach
+                  Đổi trả theo chính sách
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-600">
                   <ShieldCheck className="w-5 h-5 text-gray-400" />
-                  Bao hanh chat luong
+                  Bảo hành chất lượng
                 </div>
               </div>
 
               <div className="flex-1">
                 <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                  Mo ta san pham
+                  Mô tả sản phẩm
                 </h3>
                 <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                  {product.description || "San pham hien chua co mo ta chi tiet."}
+                  {product.description || "Sản phẩm hiện chưa có mô tả chi tiết."}
                 </p>
                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                  {product.brand && <li>Thuong hieu: {product.brand}</li>}
-                  {product.material && <li>Chat lieu: {product.material}</li>}
-                  {product.category && <li>Danh muc: {product.category}</li>}
-                  <li>Ton kho: {product.stock ?? 0}</li>
+                  {product.brand && <li>Thương hiệu: {product.brand}</li>}
+                  {product.material && <li>Chất liệu: {product.material}</li>}
+                  {product.category && <li>Danh mục: {product.category}</li>}
+                  <li>Tồn kho: {product.stock ?? 0}</li>
                 </ul>
               </div>
             </div>
@@ -628,7 +628,7 @@ export function ProductDetailPage() {
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 border-b border-gray-100 pb-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
-                Danh gia san pham
+                Đánh giá sản phẩm
               </h2>
               <div className="mt-3 flex items-center gap-3">
                 <span className="text-4xl font-bold text-gray-900">
@@ -648,7 +648,7 @@ export function ProductDetailPage() {
                     ))}
                   </div>
                   <p className="mt-1 text-sm text-gray-500">
-                    {reviewCount} danh gia
+                    {reviewCount} đánh giá
                   </p>
                 </div>
               </div>
@@ -658,28 +658,28 @@ export function ProductDetailPage() {
               {!isAuthenticated && (
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                   <p className="text-sm text-gray-600">
-                    Dang nhap bang tai khoan user de viet danh gia cho san pham
+                    Đăng nhập bằng tài khoản user để viết đánh giá cho sản phẩm
                     nay.
                   </p>
                   <Link
                     to="/login"
                     className="mt-3 inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
                   >
-                    Dang nhap
+                    Đăng nhập
                   </Link>
                 </div>
               )}
 
               {isAuthenticated && user?.role !== "user" && (
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                  Chi tai khoan user moi co the viet danh gia san pham.
+                  Chỉ tài khoản user mới có thể viết đánh giá sản phẩm.
                 </div>
               )}
 
               {canReview && userReview && editingReviewId !== userReview._id && (
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                   <p className="text-sm font-medium text-gray-900">
-                    Ban da danh gia san pham nay
+                    Bạn đã đánh giá sản phẩm này
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
@@ -688,7 +688,7 @@ export function ProductDetailPage() {
                       className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
                     >
                       <Edit3 className="h-4 w-4" />
-                      Sua danh gia
+                      Sửa đánh giá
                     </button>
                     <button
                       type="button"
@@ -696,7 +696,7 @@ export function ProductDetailPage() {
                       className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4" />
-                      Xoa
+                      Xóa
                     </button>
                   </div>
                 </div>
@@ -709,14 +709,14 @@ export function ProductDetailPage() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-gray-900">
-                      {editingReviewId ? "Sua danh gia" : "Viet danh gia"}
+                      {editingReviewId ? "Sửa đánh giá" : "Viết đánh giá"}
                     </p>
                     {editingReviewId && (
                       <button
                         type="button"
                         onClick={cancelEditingReview}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                        aria-label="Huy sua danh gia"
+                        aria-label="Hủy sửa đánh giá"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -733,7 +733,7 @@ export function ProductDetailPage() {
                           type="button"
                           onClick={() => setReviewRating(value)}
                           className="rounded-md p-1 text-yellow-400 hover:bg-yellow-50"
-                          aria-label={`Chon ${value} sao`}
+                          aria-label={`Chọn ${value} sao`}
                         >
                           <Star
                             className={`h-6 w-6 ${
@@ -752,7 +752,7 @@ export function ProductDetailPage() {
                     onChange={(event) => setReviewComment(event.target.value)}
                     rows={4}
                     maxLength={500}
-                    placeholder="Chia se trai nghiem cua ban ve san pham..."
+                    placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
                     className="mt-3 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-black"
                   />
                   <div className="mt-3 flex items-center justify-between gap-3">
@@ -765,10 +765,10 @@ export function ProductDetailPage() {
                       className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {reviewSubmitting
-                        ? "Dang gui..."
+                        ? "Đang gửi..."
                         : editingReviewId
-                          ? "Luu danh gia"
-                          : "Gui danh gia"}
+                          ? "Lưu đánh giá"
+                          : "Gửi đánh giá"}
                     </button>
                   </div>
                 </form>
@@ -779,7 +779,7 @@ export function ProductDetailPage() {
           <div className="divide-y divide-gray-100">
             {reviews.length === 0 ? (
               <div className="py-10 text-center text-sm text-gray-500">
-                Chua co danh gia nao cho san pham nay.
+                Chưa có đánh giá nào cho sản phẩm này.
               </div>
             ) : (
               reviews.map((review) => {
@@ -799,7 +799,7 @@ export function ProductDetailPage() {
                             </h3>
                             {isOwnReview && (
                               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                                Cua ban
+                                Của bạn
                               </span>
                             )}
                           </div>
@@ -831,7 +831,7 @@ export function ProductDetailPage() {
                             type="button"
                             onClick={() => startEditingReview(review)}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                            aria-label="Sua danh gia"
+                            aria-label="Sửa đánh giá"
                           >
                             <Edit3 className="h-4 w-4" />
                           </button>
@@ -839,7 +839,7 @@ export function ProductDetailPage() {
                             type="button"
                             onClick={() => void handleDeleteReview(review._id)}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-500 hover:bg-red-50"
-                            aria-label="Xoa danh gia"
+                            aria-label="Xóa đánh giá"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -863,7 +863,7 @@ export function ProductDetailPage() {
           <div className="mt-16">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-bold text-gray-900">
-                Co the ban se thich
+                Có thể bạn sẽ thích
               </h2>
             </div>
 

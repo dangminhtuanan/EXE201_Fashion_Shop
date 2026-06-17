@@ -12,7 +12,7 @@ interface HeaderProps {
 const navItems = [
   { label: "TRANG CHỦ", href: "/" },
   { label: "SẢN PHẨM", href: "/" },
-  { label: "GOI AI", href: "/ai-packages" },
+  { label: "GÓI AI", href: "/ai-packages" },
   { label: "NEW ARRIVAL", href: "/" },
   { label: "BEST SELLER", href: "/" },
   { label: "SALE", href: "/" },

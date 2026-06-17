@@ -71,13 +71,13 @@ type ManagerSection = "overview" | "reports" | "orders" | "payments" | "shipping
 type ManagerOrder = Order & { user?: Pick<UserProfile, "_id" | "username" | "email" | "phone"> };
 
 const sections = [
-  { id: "overview", label: "Tong quan", icon: LayoutDashboard },
-  { id: "reports", label: "Thong ke", icon: BadgeCheck },
-  { id: "orders", label: "Orders", icon: ClipboardList },
-  { id: "payments", label: "Payments", icon: CreditCard },
-  { id: "shipping", label: "Shipping", icon: Truck },
-  { id: "products", label: "Products", icon: Boxes },
-  { id: "users", label: "Users", icon: Users },
+  { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
+  { id: "reports", label: "Thống kê", icon: BadgeCheck },
+  { id: "orders", label: "Đơn hàng", icon: ClipboardList },
+  { id: "payments", label: "Thanh toán", icon: CreditCard },
+  { id: "shipping", label: "Giao hàng", icon: Truck },
+  { id: "products", label: "Sản phẩm", icon: Boxes },
+  { id: "users", label: "Người dùng", icon: Users },
 ] satisfies Array<{ id: ManagerSection; label: string; icon: typeof LayoutDashboard }>;
 
 const orderStatuses: Order["status"][] = [
@@ -123,10 +123,10 @@ const shippingStatuses: ShippingStatus[] = [
 const editableShippingStatuses = shippingStatuses.filter((status) => status !== "cancelled");
 
 const reportRanges = [
-  { value: "7", label: "7 ngay" },
-  { value: "30", label: "30 ngay" },
-  { value: "90", label: "90 ngay" },
-  { value: "365", label: "12 thang" },
+  { value: "7", label: "7 ngày" },
+  { value: "30", label: "30 ngày" },
+  { value: "90", label: "90 ngày" },
+  { value: "365", label: "12 tháng" },
 ];
 
 const chartColors = ["#0f172a", "#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed"];
@@ -301,7 +301,7 @@ export function ManagerDashboardPage() {
 
   const handleLogout = () => {
     logout();
-    toast.success("Da dang xuat");
+    toast.success("Đã đăng xuất");
     navigate("/login", { replace: true });
   };
 
@@ -314,7 +314,7 @@ export function ManagerDashboardPage() {
     try {
       const response = await ordersApi.updateStatus(orderId, { [field]: value });
       setOrders((prev) => prev.map((item) => (item._id === orderId ? (response.order as ManagerOrder) : item)));
-      toast.success("Da cap nhat order");
+      toast.success("Đã cập nhật đơn hàng");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -328,7 +328,7 @@ export function ManagerDashboardPage() {
       const response = await paymentsApi.updateStatus(paymentId, { status });
       setPayments((prev) => prev.map((item) => (item._id === paymentId ? response.payment : item)));
       void loadData();
-      toast.success("Da cap nhat payment");
+      toast.success("Đã cập nhật thanh toán");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -342,7 +342,7 @@ export function ManagerDashboardPage() {
       const response = await shippingApi.updateStatus(shippingId, { status });
       setShipments((prev) => prev.map((item) => (item._id === shippingId ? response.data : item)));
       void loadData();
-      toast.success("Da cap nhat shipping");
+      toast.success("Đã cập nhật giao hàng");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -356,8 +356,8 @@ export function ManagerDashboardPage() {
         <aside className="hidden w-72 shrink-0 border-r bg-white px-4 py-5 lg:block">
           <div className="mb-8 px-3">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outfio</p>
-            <h1 className="mt-2 text-2xl font-bold">Manager dashboard</h1>
-            <p className="mt-2 text-sm text-slate-500">Van hanh don hang, thanh toan va giao hang</p>
+            <h1 className="mt-2 text-2xl font-bold">Bảng điều khiển quản lý</h1>
+            <p className="mt-2 text-sm text-slate-500">Vận hành đơn hàng, thanh toán và giao hàng</p>
           </div>
 
           <nav className="space-y-1">
@@ -385,7 +385,7 @@ export function ManagerDashboardPage() {
             <p className="mt-1 break-all">{user?.email}</p>
             <Button variant="outline" className="mt-3 w-full" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
-              Dang xuat
+              Đăng xuất
             </Button>
           </div>
         </aside>
@@ -395,11 +395,11 @@ export function ManagerDashboardPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outfio</p>
-                <h1 className="text-xl font-bold">Manager dashboard</h1>
+                <h1 className="text-xl font-bold">Bảng điều khiển quản lý</h1>
               </div>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
-                Dang xuat
+                Đăng xuất
               </Button>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
@@ -420,7 +420,7 @@ export function ManagerDashboardPage() {
           <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
             <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-500">Xin chao, {user?.username || "manager"}</p>
+                <p className="text-sm font-medium text-slate-500">Xin chào, {user?.username || "manager"}</p>
                 <h2 className="mt-1 text-3xl font-bold tracking-tight">
                   {sections.find((item) => item.id === activeSection)?.label}
                 </h2>
@@ -428,22 +428,22 @@ export function ManagerDashboardPage() {
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => void loadData()}>
                   <RefreshCcw className="h-4 w-4" />
-                  Lam moi
+                  Làm mới
                 </Button>
                 <Button variant="outline" onClick={handleLogout}>
                   <LogOut className="h-4 w-4" />
-                  Dang xuat
+                  Đăng xuất
                 </Button>
               </div>
             </div>
 
             <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-              <StatCard title="Users" value={stats.users} icon={Users} />
-              <StatCard title="Orders" value={stats.orders} icon={ClipboardList} />
-              <StatCard title="Payments" value={stats.payments} icon={CreditCard} />
-              <StatCard title="Shipping" value={stats.shipments} description={`${stats.activeShipments} active`} icon={Truck} />
-              <StatCard title="Products" value={stats.products} description={`${stats.lowStock} low stock`} icon={Boxes} />
-              <StatCard title="Revenue" value={money(stats.revenue)} icon={BadgeCheck} />
+              <StatCard title="Người dùng" value={stats.users} icon={Users} />
+              <StatCard title="Đơn hàng" value={stats.orders} icon={ClipboardList} />
+              <StatCard title="Thanh toán" value={stats.payments} icon={CreditCard} />
+              <StatCard title="Giao hàng" value={stats.shipments} description={`${stats.activeShipments} đang xử lý`} icon={Truck} />
+              <StatCard title="Sản phẩm" value={stats.products} description={`${stats.lowStock} sắp hết hàng`} icon={Boxes} />
+              <StatCard title="Doanh thu" value={money(stats.revenue)} icon={BadgeCheck} />
             </div>
 
             {activeSection !== "overview" && activeSection !== "reports" && (
@@ -453,7 +453,7 @@ export function ManagerDashboardPage() {
                   <Input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Tim kiem du lieu..."
+                    placeholder="Tìm kiếm dữ liệu..."
                     className="pl-9"
                   />
                 </div>
@@ -464,7 +464,7 @@ export function ManagerDashboardPage() {
                       onChange={(event) => setOrderStatusFilter(event.target.value)}
                       className="h-9 rounded-md border bg-white px-3 text-sm"
                     >
-                      <option value="">Tat ca order status</option>
+                      <option value="">Tất cả trạng thái đơn hàng</option>
                       {orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                     </select>
                   )}
@@ -474,7 +474,7 @@ export function ManagerDashboardPage() {
                       onChange={(event) => setPaymentStatusFilter(event.target.value)}
                       className="h-9 rounded-md border bg-white px-3 text-sm"
                     >
-                      <option value="">Tat ca payment status</option>
+                      <option value="">Tất cả trạng thái thanh toán</option>
                       {paymentStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                     </select>
                   )}
@@ -484,7 +484,7 @@ export function ManagerDashboardPage() {
                       onChange={(event) => setShippingStatusFilter(event.target.value)}
                       className="h-9 rounded-md border bg-white px-3 text-sm"
                     >
-                      <option value="">Tat ca shipping status</option>
+                      <option value="">Tất cả trạng thái giao hàng</option>
                       {shippingStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                     </select>
                   )}
@@ -516,17 +516,17 @@ export function ManagerDashboardPage() {
             )}
 
             {activeSection === "orders" && (
-              <DataCard title="Danh sach order" description="Manager co the cap nhat order va payment status">
+              <DataCard title="Danh sách đơn hàng" description="Quản lý có thể cập nhật trạng thái đơn hàng và thanh toán">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Ma don</TableHead>
-                      <TableHead>Khach hang</TableHead>
-                      <TableHead>San pham</TableHead>
-                      <TableHead>Tong tien</TableHead>
-                      <TableHead>Order status</TableHead>
-                      <TableHead>Payment</TableHead>
-                      <TableHead>Ngay tao</TableHead>
+                      <TableHead>Mã đơn</TableHead>
+                      <TableHead>Khách hàng</TableHead>
+                      <TableHead>Sản phẩm</TableHead>
+                      <TableHead>Tổng tiền</TableHead>
+                      <TableHead>Trạng thái đơn</TableHead>
+                      <TableHead>Thanh toán</TableHead>
+                      <TableHead>Ngày tạo</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -537,7 +537,7 @@ export function ManagerDashboardPage() {
                           <div className="font-medium">{item.customerName}</div>
                           <div className="text-xs text-slate-500">{item.phone}</div>
                         </TableCell>
-                        <TableCell>{item.items.reduce((total, orderItem) => total + orderItem.quantity, 0)} items</TableCell>
+                        <TableCell>{item.items.reduce((total, orderItem) => total + orderItem.quantity, 0)} sản phẩm</TableCell>
                         <TableCell>{money(item.totalAmount)}</TableCell>
                         <TableCell>
                           <select
@@ -562,24 +562,24 @@ export function ManagerDashboardPage() {
                         <TableCell>{dateTime(item.createdAt)}</TableCell>
                       </TableRow>
                     ))}
-                    {!loading && filteredOrders.length === 0 && <EmptyRow colSpan={7} text="Khong co order phu hop" />}
+                    {!loading && filteredOrders.length === 0 && <EmptyRow colSpan={7} text="Không có đơn hàng phù hợp" />}
                   </TableBody>
                 </Table>
               </DataCard>
             )}
 
             {activeSection === "payments" && (
-              <DataCard title="Danh sach payment" description="Theo doi va cap nhat trang thai thanh toan">
+              <DataCard title="Danh sách thanh toán" description="Theo dõi và cập nhật trạng thái thanh toán">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Ma payment</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Provider</TableHead>
-                      <TableHead>So tien</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Order</TableHead>
-                      <TableHead>Ngay tao</TableHead>
+                      <TableHead>Mã thanh toán</TableHead>
+                      <TableHead>Người dùng</TableHead>
+                      <TableHead>Nhà cung cấp</TableHead>
+                      <TableHead>Số tiền</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead>Đơn hàng</TableHead>
+                      <TableHead>Ngày tạo</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -610,23 +610,23 @@ export function ManagerDashboardPage() {
                         </TableRow>
                       );
                     })}
-                    {!loading && filteredPayments.length === 0 && <EmptyRow colSpan={7} text="Khong co payment phu hop" />}
+                    {!loading && filteredPayments.length === 0 && <EmptyRow colSpan={7} text="Không có thanh toán phù hợp" />}
                   </TableBody>
                 </Table>
               </DataCard>
             )}
 
             {activeSection === "shipping" && (
-              <DataCard title="Danh sach shipping" description="Theo doi va cap nhat trang thai giao hang">
+              <DataCard title="Danh sách giao hàng" description="Theo dõi và cập nhật trạng thái giao hàng">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tracking</TableHead>
-                      <TableHead>Khach hang</TableHead>
-                      <TableHead>Shipper</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Cap nhat gan nhat</TableHead>
+                      <TableHead>Mã vận đơn</TableHead>
+                      <TableHead>Khách hàng</TableHead>
+                      <TableHead>Người giao</TableHead>
+                      <TableHead>Phương thức</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead>Cập nhật gần nhất</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -640,7 +640,7 @@ export function ManagerDashboardPage() {
                             <div className="text-xs text-slate-500">{item.order?.phone || "--"}</div>
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium">{item.shipper?.username || "Chua gan"}</div>
+                            <div className="font-medium">{item.shipper?.username || "Chưa gán"}</div>
                             <div className="text-xs text-slate-500">{item.shipper?.email || "--"}</div>
                           </TableCell>
                           <TableCell>{item.shippingMethod}</TableCell>
@@ -659,23 +659,23 @@ export function ManagerDashboardPage() {
                         </TableRow>
                       );
                     })}
-                    {!loading && filteredShipments.length === 0 && <EmptyRow colSpan={6} text="Khong co shipping phu hop" />}
+                    {!loading && filteredShipments.length === 0 && <EmptyRow colSpan={6} text="Không có giao hàng phù hợp" />}
                   </TableBody>
                 </Table>
               </DataCard>
             )}
 
             {activeSection === "products" && (
-              <DataCard title="Danh sach product" description="Theo doi hang ton kho va san pham ban chay">
+              <DataCard title="Danh sách sản phẩm" description="Theo dõi hàng tồn kho và sản phẩm bán chạy">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Gia</TableHead>
+                      <TableHead>Sản phẩm</TableHead>
+                      <TableHead>Danh mục</TableHead>
+                      <TableHead>Giá</TableHead>
                       <TableHead>Kho</TableHead>
-                      <TableHead>Da ban</TableHead>
-                      <TableHead>Featured</TableHead>
+                      <TableHead>Đã bán</TableHead>
+                      <TableHead>Nổi bật</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -689,26 +689,26 @@ export function ManagerDashboardPage() {
                         <TableCell>{money(item.price)}</TableCell>
                         <TableCell><Badge variant={(item.stock || 0) <= 5 ? "destructive" : "secondary"}>{item.stock || 0}</Badge></TableCell>
                         <TableCell>{item.sold || 0}</TableCell>
-                        <TableCell>{item.isFeatured ? "Co" : "Khong"}</TableCell>
+                        <TableCell>{item.isFeatured ? "Có" : "Không"}</TableCell>
                       </TableRow>
                     ))}
-                    {!loading && filteredProducts.length === 0 && <EmptyRow colSpan={6} text="Khong co product phu hop" />}
+                    {!loading && filteredProducts.length === 0 && <EmptyRow colSpan={6} text="Không có sản phẩm phù hợp" />}
                   </TableBody>
                 </Table>
               </DataCard>
             )}
 
             {activeSection === "users" && (
-              <DataCard title="Danh sach user" description="Theo doi user va vai tro trong he thong">
+              <DataCard title="Danh sách người dùng" description="Theo dõi người dùng và vai trò trong hệ thống">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Ten</TableHead>
+                      <TableHead>Tên</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Vai tro</TableHead>
-                      <TableHead>AI credits</TableHead>
-                      <TableHead>Cap nhat</TableHead>
+                      <TableHead>Số điện thoại</TableHead>
+                      <TableHead>Vai trò</TableHead>
+                      <TableHead>Lượt AI</TableHead>
+                      <TableHead>Cập nhật</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -722,7 +722,7 @@ export function ManagerDashboardPage() {
                         <TableCell>{dateTime(item.updatedAt)}</TableCell>
                       </TableRow>
                     ))}
-                    {!loading && filteredUsers.length === 0 && <EmptyRow colSpan={6} text="Khong co user phu hop" />}
+                    {!loading && filteredUsers.length === 0 && <EmptyRow colSpan={6} text="Không có người dùng phù hợp" />}
                   </TableBody>
                 </Table>
               </DataCard>
@@ -804,21 +804,21 @@ function ManagerReportPanel({
         <CardHeader className="gap-4">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <CardTitle>Thong ke van hanh manager</CardTitle>
-              <CardDescription>Doanh thu, don hang, san pham va shipping can theo doi</CardDescription>
+              <CardTitle>Thống kê vận hành quản lý</CardTitle>
+              <CardDescription>Doanh thu, đơn hàng, sản phẩm và giao hàng cần theo dõi</CardDescription>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <select value={range} onChange={(event) => onRangeChange(event.target.value)} className="h-9 rounded-md border bg-white px-3 text-sm">
                 {reportRanges.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
               <select value={groupBy} onChange={(event) => onGroupByChange(event.target.value as "day" | "month" | "year")} className="h-9 rounded-md border bg-white px-3 text-sm">
-                <option value="day">Theo ngay</option>
-                <option value="month">Theo thang</option>
-                <option value="year">Theo nam</option>
+                <option value="day">Theo ngày</option>
+                <option value="month">Theo tháng</option>
+                <option value="year">Theo năm</option>
               </select>
               <Button variant="outline" onClick={onRefresh}>
                 <RefreshCcw className="h-4 w-4" />
-                Lam moi
+                Làm mới
               </Button>
             </div>
           </div>
@@ -826,16 +826,16 @@ function ManagerReportPanel({
         <CardContent>
           <div className="grid gap-3 md:grid-cols-4">
             <ReportMetric label="Doanh thu" value={money(report?.summary.totalRevenue)} loading={loading} />
-            <ReportMetric label="Don da thanh toan" value={report?.summary.orderCount ?? 0} loading={loading} />
-            <ReportMetric label="San pham da ban" value={report?.summary.itemCount ?? 0} loading={loading} />
-            <ReportMetric label="Gia tri don TB" value={money(report?.summary.averageOrderValue)} loading={loading} />
+            <ReportMetric label="Đơn đã thanh toán" value={report?.summary.orderCount ?? 0} loading={loading} />
+            <ReportMetric label="Sản phẩm đã bán" value={report?.summary.itemCount ?? 0} loading={loading} />
+            <ReportMetric label="Giá trị đơn TB" value={money(report?.summary.averageOrderValue)} loading={loading} />
           </div>
 
           <div className="mt-6 h-80">
             {loading ? (
               <ChartLoading />
             ) : timeline.length === 0 ? (
-              <ChartEmpty text="Chua co du lieu doanh thu" />
+              <ChartEmpty text="Chưa có dữ liệu doanh thu" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={timeline} margin={{ top: 10, right: 18, bottom: 0, left: 0 }}>
@@ -846,11 +846,11 @@ function ManagerReportPanel({
                   <Tooltip
                     formatter={(value, name) => [
                       name === "revenue" ? money(Number(value)) : value,
-                      name === "revenue" ? "Doanh thu" : "So don",
+                      name === "revenue" ? "Doanh thu" : "Số đơn",
                     ]}
-                    labelFormatter={(label) => `Ky: ${label}`}
+                    labelFormatter={(label) => `Kỳ: ${label}`}
                   />
-                  <Legend formatter={(value) => (value === "revenue" ? "Doanh thu" : "So don")} />
+                  <Legend formatter={(value) => (value === "revenue" ? "Doanh thu" : "Số đơn")} />
                   <Line yAxisId="revenue" type="monotone" dataKey="revenue" name="revenue" stroke="#0f172a" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                   <Line yAxisId="orders" type="monotone" dataKey="orderCount" name="orderCount" stroke="#2563eb" strokeWidth={2} dot={{ r: 2 }} />
                 </LineChart>
@@ -863,22 +863,22 @@ function ManagerReportPanel({
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader>
-            <CardTitle>Top san pham tao doanh thu</CardTitle>
-            <CardDescription>Uu tien xem de quyet dinh ton kho va campaign</CardDescription>
+            <CardTitle>Top sản phẩm tạo doanh thu</CardTitle>
+            <CardDescription>Ưu tiên xem để quyết định tồn kho và chiến dịch</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-72">
               {loading ? (
                 <ChartLoading />
               ) : topProducts.length === 0 ? (
-                <ChartEmpty text="Chua co san pham tao doanh thu" />
+                <ChartEmpty text="Chưa có sản phẩm tạo doanh thu" />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={topProducts} layout="vertical" margin={{ top: 0, right: 24, bottom: 0, left: 12 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                     <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => compactMoney(Number(value))} />
                     <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} fontSize={12} width={150} />
-                    <Tooltip formatter={(value) => [money(Number(value)), "Doanh thu"]} labelFormatter={(_, payload) => payload?.[0]?.payload?.name || "San pham"} />
+                    <Tooltip formatter={(value) => [money(Number(value)), "Doanh thu"]} labelFormatter={(_, payload) => payload?.[0]?.payload?.name || "Sản phẩm"} />
                     <Bar dataKey="revenue" radius={[0, 6, 6, 0]}>
                       {topProducts.map((item, index) => (
                         <Cell key={item.product || item.name} fill={chartColors[index % chartColors.length]} />
@@ -892,43 +892,43 @@ function ManagerReportPanel({
         </Card>
 
         <ManagerPieCard
-          title="Co cau thanh toan"
-          description="Ty trong so don theo paymentStatus"
+          title="Cơ cấu thanh toán"
+          description="Tỷ trọng số đơn theo paymentStatus"
           data={report?.revenueByPaymentStatus || []}
           loading={loading}
           dataKey="orderCount"
           nameKey="paymentStatus"
-          emptyText="Chua co du lieu thanh toan"
+          emptyText="Chưa có dữ liệu thanh toán"
         />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
         <ManagerPieCard
-          title="Trang thai don hang"
-          description="Ty trong order theo status hien tai"
+          title="Trạng thái đơn hàng"
+          description="Tỷ trọng đơn hàng theo trạng thái hiện tại"
           data={orderStatusData}
           loading={loading}
           dataKey="count"
           nameKey="status"
-          emptyText="Chua co du lieu order"
+          emptyText="Chưa có dữ liệu đơn hàng"
         />
         <ManagerPieCard
-          title="Trang thai giao hang"
-          description="Theo doi shipping dang bi tac hoac da hoan tat"
+          title="Trạng thái giao hàng"
+          description="Theo dõi giao hàng đang bị tắc hoặc đã hoàn tất"
           data={shippingStatusData}
           loading={loading}
           dataKey="count"
           nameKey="status"
-          emptyText="Chua co du lieu shipping"
+          emptyText="Chưa có dữ liệu giao hàng"
         />
         <ManagerPieCard
-          title="Co cau doanh thu"
-          description="Ty trong doanh thu theo trang thai don"
+          title="Cơ cấu doanh thu"
+          description="Tỷ trọng doanh thu theo trạng thái đơn"
           data={report?.revenueByStatus || []}
           loading={loading}
           dataKey="revenue"
           nameKey="status"
-          emptyText="Chua co du lieu doanh thu"
+          emptyText="Chưa có dữ liệu doanh thu"
           valueFormatter={(value) => money(Number(value))}
         />
       </div>
@@ -948,7 +948,7 @@ function ReportMetric({ label, value, loading }: { label: string; value: number 
 function ChartLoading() {
   return (
     <div className="flex h-full items-center justify-center rounded-md border border-dashed text-sm text-slate-500">
-      Dang tai bieu do...
+      Đang tải biểu đồ...
     </div>
   );
 }
@@ -1038,7 +1038,7 @@ function DataCard({ title, description, children }: { title: string; description
   );
 }
 
-function EmptyRow({ colSpan, text = "Dang tai du lieu..." }: { colSpan: number; text?: string }) {
+function EmptyRow({ colSpan, text = "Đang tải dữ liệu..." }: { colSpan: number; text?: string }) {
   return (
     <TableRow>
       <TableCell colSpan={colSpan} className="py-8 text-center text-slate-500">
@@ -1052,14 +1052,14 @@ function RecentOrders({ orders, loading }: { orders: ManagerOrder[]; loading: bo
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Order moi nhat</CardTitle>
-        <CardDescription>Theo du lieu vua fetch tu backend</CardDescription>
+        <CardTitle>Đơn hàng mới nhất</CardTitle>
+        <CardDescription>Theo dữ liệu mới lấy từ backend</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
-          <p className="text-sm text-slate-500">Dang tai...</p>
+          <p className="text-sm text-slate-500">Đang tải...</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-slate-500">Chua co order</p>
+          <p className="text-sm text-slate-500">Chưa có đơn hàng</p>
         ) : (
           orders.map((order) => (
             <div key={order._id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
@@ -1080,14 +1080,14 @@ function LowStockProducts({ products, loading }: { products: Product[]; loading:
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Product sap het hang</CardTitle>
-        <CardDescription>Can uu tien kiem tra ton kho</CardDescription>
+        <CardTitle>Sản phẩm sắp hết hàng</CardTitle>
+        <CardDescription>Cần ưu tiên kiểm tra tồn kho</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
-          <p className="text-sm text-slate-500">Dang tai...</p>
+          <p className="text-sm text-slate-500">Đang tải...</p>
         ) : products.length === 0 ? (
-          <p className="text-sm text-slate-500">Khong co product sap het hang</p>
+          <p className="text-sm text-slate-500">Không có sản phẩm sắp hết hàng</p>
         ) : (
           products.map((product) => (
             <div key={product._id || product.id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
@@ -1108,14 +1108,14 @@ function RecentPayments({ payments, loading }: { payments: Payment[]; loading: b
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payment moi nhat</CardTitle>
-        <CardDescription>Theo giao dich thanh toan moi nhat</CardDescription>
+        <CardTitle>Thanh toán mới nhất</CardTitle>
+        <CardDescription>Theo giao dịch thanh toán mới nhất</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
-          <p className="text-sm text-slate-500">Dang tai...</p>
+          <p className="text-sm text-slate-500">Đang tải...</p>
         ) : payments.length === 0 ? (
-          <p className="text-sm text-slate-500">Chua co payment</p>
+          <p className="text-sm text-slate-500">Chưa có thanh toán</p>
         ) : (
           payments.map((payment) => (
             <div key={payment._id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
@@ -1136,14 +1136,14 @@ function ActiveShipments({ shipments, loading }: { shipments: ShippingRecord[]; 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Shipping dang xu ly</CardTitle>
-        <CardDescription>Cac don giao hang chua ket thuc</CardDescription>
+        <CardTitle>Giao hàng đang xử lý</CardTitle>
+        <CardDescription>Các đơn giao hàng chưa kết thúc</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
-          <p className="text-sm text-slate-500">Dang tai...</p>
+          <p className="text-sm text-slate-500">Đang tải...</p>
         ) : shipments.length === 0 ? (
-          <p className="text-sm text-slate-500">Khong co shipping dang xu ly</p>
+          <p className="text-sm text-slate-500">Không có giao hàng đang xử lý</p>
         ) : (
           shipments.map((shipment) => (
             <div key={shipment._id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">

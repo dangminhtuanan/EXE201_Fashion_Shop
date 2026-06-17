@@ -48,6 +48,55 @@ export const API_ORIGIN = (() => {
   }
 })();
 
+const vietnameseDisplayNames: Record<string, string> = {
+  "ao thun": "Áo thun",
+  "ao da": "Áo da",
+  "ao hoodie": "Áo hoodie",
+  "ao so mi": "Áo sơ mi",
+  "ao khoac": "Áo khoác",
+  "ao polo": "Áo polo",
+  "quan jean": "Quần jean",
+  "quan jeans": "Quần jean",
+  "quan short": "Quần short",
+  "quan jogger": "Quần jogger",
+  "quan dai": "Quần dài",
+  "quan ngan": "Quần ngắn",
+  vay: "Váy",
+  dam: "Đầm",
+  "phu kien": "Phụ kiện",
+  balo: "Balo",
+};
+
+function normalizeVietnameseDisplayName(value?: string | null) {
+  if (!value) {
+    return value || "";
+  }
+
+  const normalizedKey = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+
+  return vietnameseDisplayNames[normalizedKey] || value;
+}
+
+function normalizeCategory(category: Category): Category {
+  return {
+    ...category,
+    name: normalizeVietnameseDisplayName(category.name),
+    parent: category.parent
+      ? {
+          ...category.parent,
+          name: normalizeVietnameseDisplayName(category.parent.name),
+        }
+      : category.parent,
+  };
+}
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
@@ -610,17 +659,19 @@ interface MixMatchTryOnPayload {
 
 function getCategoryParts(category: ApiProduct["category"]) {
   if (typeof category === "object" && category !== null) {
+    const normalizedCategory = normalizeCategory(category);
+
     return {
-      id: category._id,
-      name: category.name,
-      slug: category.slug,
+      id: normalizedCategory._id,
+      name: normalizedCategory.name,
+      slug: normalizedCategory.slug,
     };
   }
 
   if (typeof category === "string") {
     return {
       id: category,
-      name: category,
+      name: normalizeVietnameseDisplayName(category),
       slug: undefined,
     };
   }
@@ -837,10 +888,20 @@ export const usersApi = {
 
 export const categoriesApi = {
   async getAll() {
-    return request<CategoriesResponse>("/categories");
+    const response = await request<CategoriesResponse>("/categories");
+
+    return {
+      ...response,
+      categories: response.categories.map(normalizeCategory),
+    };
   },
   async getById(id: string) {
-    return request<CategoryResponse>(`/categories/${id}`);
+    const response = await request<CategoryResponse>(`/categories/${id}`);
+
+    return {
+      ...response,
+      category: normalizeCategory(response.category),
+    };
   },
 };
 

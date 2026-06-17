@@ -64,7 +64,7 @@ export function HomePage() {
   const handleAddToCart = async (product: Product) => {
     try {
       await addItem(product, 1);
-      toast.success("Da them vao gio hang");
+      toast.success("Đã thêm vào giỏ hàng");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -85,7 +85,7 @@ export function HomePage() {
                   : "hover:bg-black hover:text-white"
               }`}
             >
-              Tat ca
+              Tất cả
             </button>
             {categories.map((category) => {
               const value = category.slug || category._id;
@@ -109,7 +109,7 @@ export function HomePage() {
 
       <section className="py-12">
         <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold mb-8">San pham noi bat</h2>
+          <h2 className="text-2xl font-bold mb-8">Sản phẩm nổi bật</h2>
           {loadingProducts ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
               {Array.from({ length: 8 }).map((_, index) => (
@@ -122,7 +122,7 @@ export function HomePage() {
             </div>
           ) : products.length === 0 ? (
             <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center text-gray-500">
-              Chua co san pham phu hop.
+              Chưa có sản phẩm phù hợp.
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-5 gap-y-8">
@@ -140,18 +140,18 @@ export function HomePage() {
 
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4 text-center max-w-xl">
-          <h2 className="text-2xl font-bold mb-4">Dang ky nhan tin</h2>
+          <h2 className="text-2xl font-bold mb-4">Đăng ký nhận tin</h2>
           <p className="text-gray-600 mb-6">
-            Nhan thong tin ve san pham moi va uu dai dac biet
+            Nhận thông tin về sản phẩm mới và ưu đãi đặc biệt
           </p>
           <div className="flex gap-2">
             <input
               type="email"
-              placeholder="Email cua ban"
+              placeholder="Email của bạn"
               className="flex-1 px-4 py-3 rounded border focus:outline-none focus:ring-2 focus:ring-black"
             />
             <button className="px-6 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors">
-              Dang ky
+              Đăng ký
             </button>
           </div>
         </div>
