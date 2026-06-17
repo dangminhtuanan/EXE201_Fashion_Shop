@@ -654,6 +654,7 @@ interface TryOnPayload {
 interface MixMatchTryOnPayload {
   modelImageUrl: string;
   productId: string;
+  modelGender?: Product["gender"];
   hdMode?: boolean;
 }
 

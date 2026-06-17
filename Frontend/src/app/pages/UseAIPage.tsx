@@ -142,6 +142,56 @@ const MIX_MATCH_KEYWORDS = [
   'jogger',
 ];
 
+const TOP_KEYWORDS = [
+  'ao',
+  'top',
+  'shirt',
+  'tshirt',
+  'tee',
+  'blouse',
+  'hoodie',
+  'sweater',
+  'jacket',
+  'coat',
+  'polo',
+  'somi',
+  'thun',
+  'khoac',
+];
+
+const BOTTOM_KEYWORDS = [
+  'quan',
+  'bottom',
+  'pants',
+  'trousers',
+  'jean',
+  'jeans',
+  'short',
+  'shorts',
+  'skirt',
+  'chanvay',
+  'legging',
+  'jogger',
+];
+
+const FULL_SET_KEYWORDS = ['vay', 'dam', 'dress', 'jumpsuit', 'set', 'suit'];
+const UNSAFE_MENS_TOP_KEYWORDS = [
+  'babytee',
+  'bralette',
+  'bra',
+  'bustier',
+  'camisole',
+  'boxy',
+  'cropped',
+  'croptop',
+  'crop',
+  'cutout',
+  'halter',
+  'strapless',
+  'tank',
+  'tube',
+];
+
 function normalizeSearchText(value = '') {
   return value
     .toString()
@@ -152,6 +202,48 @@ function normalizeSearchText(value = '') {
     .toLowerCase();
 }
 
+function hasProductTypeKeyword(text: string, keywords: string[]) {
+  const compactText = text.replace(/\s+/g, '');
+  const words = new Set(text.split(/[^a-z0-9]+/).filter(Boolean));
+
+  return keywords.some((keyword) => {
+    if (keyword.length <= 3) {
+      return words.has(keyword);
+    }
+
+    return words.has(keyword) || compactText.includes(keyword);
+  });
+}
+
+function getTryOnClothType(product: Product): 'upper' | 'lower' | 'full_set' {
+  const categoryText = normalizeSearchText(
+    [product.category, product.categorySlug].filter(Boolean).join(' ')
+  );
+  const fallbackText = normalizeSearchText(product.name);
+
+  if (hasProductTypeKeyword(categoryText, FULL_SET_KEYWORDS)) {
+    return 'full_set';
+  }
+
+  if (hasProductTypeKeyword(categoryText, BOTTOM_KEYWORDS)) {
+    return 'lower';
+  }
+
+  if (hasProductTypeKeyword(categoryText, TOP_KEYWORDS)) {
+    return 'upper';
+  }
+
+  if (hasProductTypeKeyword(fallbackText, FULL_SET_KEYWORDS)) {
+    return 'full_set';
+  }
+
+  if (hasProductTypeKeyword(fallbackText, BOTTOM_KEYWORDS)) {
+    return 'lower';
+  }
+
+  return 'upper';
+}
+
 function canMixMatchProduct(product: Product) {
   const text = normalizeSearchText(
     [product.name, product.category, product.categorySlug, product.description].filter(Boolean).join(' ')
@@ -160,6 +252,34 @@ function canMixMatchProduct(product: Product) {
   const words = new Set(text.split(/[^a-z0-9]+/).filter(Boolean));
 
   return MIX_MATCH_KEYWORDS.some((keyword) => words.has(keyword) || compactText.includes(keyword));
+}
+
+function isMixMatchProductSafeForGender(product: Product, modelGender?: Product["gender"]) {
+  if (modelGender !== 'men' && modelGender !== 'unisex') {
+    return true;
+  }
+
+  if (modelGender === 'men' && product.gender === 'women') {
+    return false;
+  }
+
+  if (modelGender === 'unisex' && product.gender === 'women') {
+    return false;
+  }
+
+  if (modelGender === 'unisex' && product.gender && product.gender !== 'unisex') {
+    return false;
+  }
+
+  if (getTryOnClothType(product) !== 'upper') {
+    return true;
+  }
+
+  const text = normalizeSearchText(
+    [product.name, product.category, product.categorySlug, product.description].filter(Boolean).join(' ')
+  );
+
+  return product.gender !== 'women' && !hasProductTypeKeyword(text, UNSAFE_MENS_TOP_KEYWORDS);
 }
 
 const CLOTHING_CATEGORIES = [
@@ -396,6 +516,7 @@ export function UseAIPage() {
   // State for "Phối đồ với AI" mode
   const [stylingClothing, setStylingClothing] = useState<number | null>(null);
   const [stylingModel, setStylingModel] = useState<number | null>(null);
+  const [stylingModelGender, setStylingModelGender] = useState<Product["gender"]>("men");
   const [isGeneratingStyling, setIsGeneratingStyling] = useState(false);
   const [stylingResult, setStylingResult] = useState<string | null>(null);
   const [stylingOutfit, setStylingOutfit] = useState<{ top?: Product; bottom?: Product } | null>(null);
@@ -482,8 +603,10 @@ export function UseAIPage() {
   );
 
   const stylingProductChoices = useMemo(
-    () => productChoices.filter(canMixMatchProduct),
-    [productChoices]
+    () => productChoices.filter((product) =>
+      canMixMatchProduct(product) && isMixMatchProductSafeForGender(product, stylingModelGender)
+    ),
+    [productChoices, stylingModelGender]
   );
 
   const modelChoices = useMemo(
@@ -580,7 +703,7 @@ export function UseAIPage() {
         modelImageUrl: selectedModelImage,
         clothingImageUrl: selectedProduct.image,
         productId: selectedProduct.productId,
-        clothType: 'upper',
+        clothType: getTryOnClothType(selectedProduct),
         hdMode: highQuality,
       });
 
@@ -625,6 +748,7 @@ export function UseAIPage() {
       const response = await aiApi.createMixMatchTryOn({
         modelImageUrl: selectedModelImage,
         productId: selectedProduct.productId,
+        modelGender: stylingModelGender,
         hdMode: highQuality,
       });
 
@@ -827,6 +951,7 @@ export function UseAIPage() {
                       </button>
                     ))}
                   </div>
+
                 </div>
 
                 <hr className="border-gray-100 mb-8" />
@@ -940,6 +1065,7 @@ export function UseAIPage() {
                       </button>
                     ))}
                   </div>
+
                 </div>
 
                 <hr className="border-gray-100 mb-8" />
@@ -964,7 +1090,13 @@ export function UseAIPage() {
                     {modelChoices.slice(0, 8).map((src, i) => (
                       <button
                         key={i}
-                        onClick={() => setStylingModel(i)}
+                        onClick={() => {
+                          setStylingModel(i);
+                          if (i >= uploadedModelImages.length) {
+                            setStylingModelGender("women");
+                            setStylingClothing(null);
+                          }
+                        }}
                         className={`relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer transition-all border-2 ${
                           stylingModel === i
                             ? 'border-[#20B29A] ring-2 ring-[#20B29A] ring-offset-1'
@@ -979,6 +1111,33 @@ export function UseAIPage() {
                         )}
                       </button>
                     ))}
+                  </div>
+
+                  <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-2">
+                    <p className="mb-2 text-xs font-medium text-gray-600">Phối theo giới tính mẫu</p>
+                    <div className="grid grid-cols-3 gap-1 rounded-md bg-white p-1">
+                      {[
+                        { label: 'Nam', value: 'men' },
+                        { label: 'Nữ', value: 'women' },
+                        { label: 'Unisex', value: 'unisex' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setStylingModelGender(option.value as Product["gender"]);
+                            setStylingClothing(null);
+                          }}
+                          className={`rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                            stylingModelGender === option.value
+                              ? 'bg-[#20B29A] text-white shadow-sm'
+                              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

@@ -55,6 +55,23 @@ const MIX_MATCH_TYPES = {
     ],
   },
 };
+const REVEALING_TOP_TOKENS = [
+  "babytee",
+  "bralette",
+  "bra",
+  "bustier",
+  "camisole",
+  "boxy",
+  "cropped",
+  "croptop",
+  "crop",
+  "cutout",
+  "cut-out",
+  "halter",
+  "strapless",
+  "tank",
+  "tube",
+];
 
 const hasCloudinaryConfig = () =>
   Boolean(
@@ -291,16 +308,54 @@ function getRandomItem(items) {
 }
 
 function isGenderCompatible(selectedGender, candidateGender) {
+  if (selectedGender === "unisex") {
+    return !candidateGender || candidateGender === "unisex";
+  }
+
   return (
     !selectedGender ||
     !candidateGender ||
-    selectedGender === "unisex" ||
     candidateGender === "unisex" ||
     selectedGender === candidateGender
   );
 }
 
-async function buildMixMatchOutfit(productId) {
+function hasAnyToken(product, tokens) {
+  const compactText = getProductTypeText(product).replace(/\s+/g, "");
+  const words = new Set(getProductTypeText(product).split(/[^a-z0-9]+/).filter(Boolean));
+
+  return tokens.some((token) => words.has(token) || compactText.includes(token.replace(/[^a-z0-9]+/g, "")));
+}
+
+function normalizeOutfitGender(value) {
+  return ["men", "women", "unisex", "kids"].includes(value) ? value : "";
+}
+
+function isStyleCompatibleForGender(outfitGender, candidateProduct, targetType) {
+  if (targetType !== "top") {
+    return true;
+  }
+
+  const selectedGender = normalizeOutfitGender(outfitGender) || "unisex";
+  const candidateGender = candidateProduct.gender || "unisex";
+  const isMensOutfit = selectedGender === "men" || (selectedGender === "unisex" && candidateGender === "men");
+
+  if (selectedGender === "unisex" && candidateGender === "women") {
+    return false;
+  }
+
+  if (!isMensOutfit) {
+    return selectedGender !== "unisex" || !hasAnyToken(candidateProduct, REVEALING_TOP_TOKENS);
+  }
+
+  if (candidateGender === "women") {
+    return false;
+  }
+
+  return !hasAnyToken(candidateProduct, REVEALING_TOP_TOKENS);
+}
+
+async function buildMixMatchOutfit(productId, modelGender) {
   if (!productId) {
     const error = new Error("Product ID is required");
     error.statusCode = 400;
@@ -333,6 +388,13 @@ async function buildMixMatchOutfit(productId) {
   }
 
   const targetType = MIX_MATCH_TYPES[selectedType].target;
+  const outfitGender = normalizeOutfitGender(modelGender) || selectedProduct.gender || "unisex";
+  if (!isStyleCompatibleForGender(outfitGender, selectedProduct, selectedType)) {
+    const error = new Error("Selected product is not suitable for this model gender");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const products = await Product.find({
     _id: { $ne: selectedProduct._id },
     isActive: true,
@@ -344,10 +406,21 @@ async function buildMixMatchOutfit(productId) {
     .limit(300);
 
   const typedCandidates = products.filter((product) => detectMixMatchType(product) === targetType);
-  const genderMatchedCandidates = typedCandidates.filter((product) =>
-    isGenderCompatible(selectedProduct.gender, product.gender)
+  const styleSafeCandidates = typedCandidates.filter((product) =>
+    isStyleCompatibleForGender(outfitGender, product, targetType)
   );
-  const candidates = genderMatchedCandidates.length > 0 ? genderMatchedCandidates : typedCandidates;
+  const candidatePool = styleSafeCandidates;
+  const exactGenderCandidates = outfitGender
+    ? candidatePool.filter((product) => product.gender === outfitGender)
+    : [];
+  const genderMatchedCandidates = candidatePool.filter((product) =>
+    isGenderCompatible(outfitGender, product.gender)
+  );
+  const candidates = exactGenderCandidates.length > 0
+    ? exactGenderCandidates
+    : genderMatchedCandidates.length > 0
+    ? genderMatchedCandidates
+    : [];
   const matchedProduct = getRandomItem(candidates);
 
   if (!matchedProduct) {
@@ -947,6 +1020,7 @@ exports.getMyTryOns = async (req, res) => {
       user: req.user.id,
       status: "COMPLETED",
       resultImageUrl: { $exists: true, $ne: "", $regex: "res.cloudinary.com" },
+      "rawResponse.mixMatchIntermediate": { $ne: true },
     };
     const recommendations = await AIOutfitRecommendation.find(filter)
       .populate("product", "name slug images price")
@@ -962,7 +1036,11 @@ exports.getMyTryOns = async (req, res) => {
 exports.createMixMatch = async (req, res) => {
   try {
     const productId = req.body.productId || req.body.selectedProductId || req.body.product;
-    const { selectedType, targetType, selectedProduct, matchedProduct, outfit } = await buildMixMatchOutfit(productId);
+    const modelGender = normalizeOutfitGender(req.body.modelGender);
+    const { selectedType, targetType, selectedProduct, matchedProduct, outfit } = await buildMixMatchOutfit(
+      productId,
+      modelGender
+    );
 
     res.status(201).json({
       message: "Create AI mix and match successfully",
@@ -992,6 +1070,7 @@ exports.createMixMatchTryOn = async (req, res) => {
   try {
     const productId = req.body.productId || req.body.selectedProductId || req.body.product;
     const modelImageUrl = String(req.body.modelImageUrl || "").trim();
+    const modelGender = normalizeOutfitGender(req.body.modelGender);
     const hdMode = req.body.hdMode === true || req.body.hdMode === "true";
     const apiKey = process.env.FITROOM_API_KEY_2;
 
@@ -1003,7 +1082,10 @@ exports.createMixMatchTryOn = async (req, res) => {
       return res.status(503).json({ message: "FITROOM_API_KEY_2 is not configured" });
     }
 
-    const { selectedType, targetType, selectedProduct, matchedProduct, outfit } = await buildMixMatchOutfit(productId);
+    const { selectedType, targetType, selectedProduct, matchedProduct, outfit } = await buildMixMatchOutfit(
+      productId,
+      modelGender
+    );
     const topImageUrl = outfit.top?.images?.[0] || "";
     const bottomImageUrl = outfit.bottom?.images?.[0] || "";
 
@@ -1011,16 +1093,39 @@ exports.createMixMatchTryOn = async (req, res) => {
       return res.status(400).json({ message: "Top and bottom products must both have image URLs" });
     }
 
-    const comboTryOn = await createAndWaitFitroomStep({
+    const lowerTryOn = await createAndWaitFitroomStep({
       userId: req.user?.id || null,
-      product: selectedProduct,
+      product: outfit.bottom,
       modelImageUrl,
-      clothingImageUrl: topImageUrl,
-      lowerClothingImageUrl: bottomImageUrl,
-      clothType: "combo",
+      clothingImageUrl: bottomImageUrl,
+      clothType: "lower",
       hdMode,
       apiKey,
     });
+    lowerTryOn.rawResponse = {
+      ...(lowerTryOn.rawResponse || {}),
+      mixMatchIntermediate: true,
+      mixMatchStep: "lower",
+    };
+    await lowerTryOn.save();
+
+    const upperTryOn = await createAndWaitFitroomStep({
+      userId: req.user?.id || null,
+      product: outfit.top,
+      modelImageUrl: lowerTryOn.resultImageUrl,
+      clothingImageUrl: topImageUrl,
+      clothType: "upper",
+      hdMode,
+      apiKey,
+    });
+    upperTryOn.rawResponse = {
+      ...(upperTryOn.rawResponse || {}),
+      lowerClothingImageUrl: bottomImageUrl,
+      lowerStepTaskId: lowerTryOn.taskId,
+      mixMatchFinal: true,
+      mixMatchStep: "upper",
+    };
+    await upperTryOn.save();
 
     res.status(201).json({
       message: "Create AI mix and match try-on successfully",
@@ -1029,24 +1134,29 @@ exports.createMixMatchTryOn = async (req, res) => {
       selectedProduct,
       matchedProduct,
       outfit,
-      taskId: comboTryOn.taskId,
+      taskId: upperTryOn.taskId,
       steps: [
         {
-          top: outfit.top,
           bottom: outfit.bottom,
-          clothType: "combo",
-          status: comboTryOn.status,
-          resultImageUrl: comboTryOn.resultImageUrl,
+          clothType: "lower",
+          status: lowerTryOn.status,
+          resultImageUrl: lowerTryOn.resultImageUrl,
+        },
+        {
+          top: outfit.top,
+          clothType: "upper",
+          status: upperTryOn.status,
+          resultImageUrl: upperTryOn.resultImageUrl,
         },
       ],
-      status: comboTryOn.status,
-      progress: comboTryOn.progress,
-      resultImageUrl: comboTryOn.resultImageUrl,
-      creditCost: 1,
+      status: upperTryOn.status,
+      progress: upperTryOn.progress,
+      resultImageUrl: upperTryOn.resultImageUrl,
+      creditCost: 2,
       fitroom: {
         apiKeyEnv: "FITROOM_API_KEY_2",
         configured: true,
-        note: "This endpoint uses Fitroom combo try-on in one task: cloth_image=top, lower_cloth_image=bottom.",
+        note: "This endpoint applies Fitroom try-on in two steps to avoid combo masking: lower first, then upper.",
       },
     });
   } catch (error) {
